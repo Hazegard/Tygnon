@@ -36,24 +36,39 @@ func main() {
 	//	fmt.Printf("%+v\n", formula)
 	//}
 
-	gitlabClient, err := NewGitlabApi(config.Token, "https://git.example.fr")
+	xmgitlab, err := NewGitlabApi(config.Token, "https://git.example.fr")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+
+	gitlab, err := NewGitlabApi("", "https://gitlab.com")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	github := NewGithubApi()
+
 	for _, formula := range formulas {
 		fmt.Printf("Trying %s...\n", formula.Homepage)
-		newVersion := ""
-		release, err := gitlabClient.GetLatestReleaseId(formula.Homepage)
-		if err == nil {
-			newVersion = release.TagName
-		} else {
-			tag, err := gitlabClient.GetLatestTagId(formula.Homepage)
-			if err != nil {
-				fmt.Printf("error getting latest tag (%s): %s\n", formula.Homepage, err)
-				continue
-			}
-			newVersion = tag.Name
+		var gitClient GitApi
+		switch formula.GitInstance() {
+		case XmGitlab:
+			gitClient = xmgitlab
+		case Gitlab:
+			gitClient = gitlab
+		case Github:
+			gitClient = github
+		default:
+			fmt.Printf("Unknown Git Instance: %s\n", formula.GitInstance())
+			continue
+		}
+
+		newVersion, err := gitClient.GetLatestVersion(formula.Homepage)
+		if err != nil {
+			fmt.Println(err)
+			continue
 		}
 		newVersion = strings.TrimPrefix(newVersion, "v")
 		newUrl := formula.GetNewVersionURL(newVersion)
@@ -69,8 +84,8 @@ func main() {
 			fmt.Printf("New version (%s) lower than current(%s), maybe an error, skipping...\n", newVersion, formula.Version)
 			continue
 		}
-		newReleaseArchive, err := HttpGet(newUrl, config.Token)
-		fmt.Println("New version found:", newReleaseArchive)
+		newReleaseArchive, err := gitClient.HttpGet(newUrl, config.Token)
+		fmt.Println("New version found:", newVersion)
 
 		if err != nil {
 			fmt.Printf("error getting new release archive (%s): %s\n", newUrl, err)

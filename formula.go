@@ -2,8 +2,17 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
+)
+
+type GitType int
+
+const (
+	Gitlab   GitType = iota
+	XmGitlab GitType = iota
+	Github   GitType = iota
 )
 
 // FormulaInfo holds the parsed information from a Homebrew formula.
@@ -93,4 +102,30 @@ func (f *FormulaInfo) Update() error {
 	content = reSHA256.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", f.SHA256))
 
 	return WriteFile(f.File, content)
+}
+
+func (f *FormulaInfo) GitInstance() GitType {
+	u, err := url.Parse(f.URL)
+	if err != nil {
+		return GitType(-1)
+	}
+	fmt.Printf("Trying %s...\n", u.Hostname())
+	fmt.Printf("Trying %s...\n", u.Hostname())
+	fmt.Printf("Trying %s...\n", u.Hostname())
+	fmt.Printf("Trying %s...\n", u.Hostname())
+	fmt.Printf("Trying %s...\n", u.Hostname())
+	fmt.Printf("Trying %s...\n", u.Hostname())
+	fmt.Printf("Trying %s...\n", u.Hostname())
+	fmt.Printf("Trying %s...\n", u.Hostname())
+	fmt.Printf("Trying %s...\n", u.Hostname())
+	switch u.Hostname() {
+	case "github.com":
+		return Github
+	case "gitlab.com":
+		return Gitlab
+	case "git.example.fr":
+		return XmGitlab
+	default:
+		return GitType(-1)
+	}
 }

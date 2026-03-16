@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"gitlab.com/gitlab-org/api/client-go"
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -25,38 +27,37 @@ func NewGitlabApi(token string, url string) (*GitlabApi, error) {
 	}, nil
 }
 
-func (gapi *GitlabApi) GetLatestTagId(projectUrl string) (*gitlab.Tag, error) {
+func (gapi *GitlabApi) GetLatestTagId(projectUrl string) (string, error) {
 	projectPath, err := ExtractProjectPath(projectUrl)
 	if err != nil {
-		return nil, fmt.Errorf("error extracting project path: %s", err)
+		return "", fmt.Errorf("error extracting project path: %s", err)
 	}
 	projectPath = strings.Trim(projectPath, "/")
 	project, _, err := gapi.client.Projects.GetProject(projectPath, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error getting project: %s", err)
+		return "", fmt.Errorf("error getting project: %s", err)
 	}
 	tags, _, err := gapi.client.Tags.ListTags(project.ID, nil)
 	if len(tags) == 0 {
-		return nil, fmt.Errorf("error getting latest tag: %s", err)
+		return "", fmt.Errorf("error getting latest tag: %s", err)
 	}
-	return tags[0], nil
+	return tags[0].Name, nil
 }
 
-func (gapi *GitlabApi) GetLatestReleaseId(projectUrl string) (*gitlab.Release, error) {
+func (gapi *GitlabApi) GetLatestReleaseId(projectUrl string) (string, error) {
 	projectPath, err := ExtractProjectPath(projectUrl)
 	if err != nil {
-		return nil, fmt.Errorf("error extracting project path: %s", err)
+		return "", fmt.Errorf("error extracting project path: %s", err)
 	}
-	projectPath = strings.Trim(projectPath, "/")
 	project, _, err := gapi.client.Projects.GetProject(projectPath, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error getting project: %s", err)
+		return "", fmt.Errorf("error getting project: %s", err)
 	}
 	release, _, err := gapi.client.Releases.GetLatestRelease(project.ID)
 	if release == nil {
-		return nil, fmt.Errorf("error getting latest release: %s", err)
+		return "", fmt.Errorf("error getting latest release: %s", err)
 	}
-	return release, nil
+	return release.TagName, nil
 }
 
 func ExtractProjectPath(u string) (string, error) {
@@ -64,5 +65,44 @@ func ExtractProjectPath(u string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error parsing url: %s", err)
 	}
-	return uu.Path, nil
+	return strings.Trim(uu.Path, "/"), nil
+}
+
+func (gapi *GitlabApi) GetLatestVersion(homepage string) (string, error) {
+	newVersion := ""
+	release, err := gapi.GetLatestReleaseId(homepage)
+	if err == nil {
+		newVersion = release
+	} else {
+		tag, err := gapi.GetLatestTagId(homepage)
+		if err != nil {
+			return "", fmt.Errorf("error getting latest tag (%s): %s\n", homepage, err)
+		}
+		newVersion = tag
+	}
+	return newVersion, nil
+}
+
+func (gapi *GitlabApi) HttpGet(assetUrl string, token string) ([]byte, error) {
+	req, err := http.NewRequest("GET", assetUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("PRIVATE-TOKEN", token)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return []byte{}, fmt.Errorf("failed to download asset: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return []byte{}, fmt.Errorf("failed to download asset, status: %s", resp.Status)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return []byte{}, fmt.Errorf("failed to download asset: %w", err)
+	}
+	return body, nil
 }

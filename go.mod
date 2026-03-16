@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
+	github.com/google/go-github/v69 v69.2.0
 	gitlab.com/gitlab-org/api/client-go v0.123.0
 )
 
