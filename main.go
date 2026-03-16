@@ -1,22 +1,24 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"os"
 	"strings"
 )
 
-const token = ""
+type Config struct {
+	Token string
+	Path  string
+}
 
 func main() {
-	formulaDir := ""
-	if len(os.Args) < 2 {
-		formulaDir = "."
-	} else {
-		formulaDir = os.Args[1]
+	config, err := parseArgs()
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 
-	formulaFiles, err := FindBrewFormulaFiles(formulaDir)
+	formulaFiles, err := FindBrewFormulaFiles(config.Path)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -34,7 +36,7 @@ func main() {
 	//	fmt.Printf("%+v\n", formula)
 	//}
 
-	gitlabClient, err := NewGitlabApi(token, "https://git.example.fr")
+	gitlabClient, err := NewGitlabApi(config.Token, "https://git.example.fr")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -67,7 +69,7 @@ func main() {
 			fmt.Printf("New version (%s) lower than current(%s), maybe an error, skipping...\n", newVersion, formula.Version)
 			continue
 		}
-		newReleaseArchive, err := HttpGet(newUrl, token)
+		newReleaseArchive, err := HttpGet(newUrl, config.Token)
 		fmt.Println("New version found:", newReleaseArchive)
 
 		if err != nil {
@@ -82,4 +84,34 @@ func main() {
 		}
 	}
 
+}
+
+func parseArgs() (Config, error) {
+	c := Config{}
+	// Define the --token flag; it's a required flag so we check it after parsing.
+	token := flag.String("token", "", "The token value (required)")
+
+	// Parse the flags from the command line.
+	flag.Parse()
+
+	// Validate that the required token flag was provided.
+	if *token == "" {
+		return Config{}, fmt.Errorf("token missing")
+	}
+	c.Token = *token
+
+	// Handle optional positional argument.
+	// All non-flag arguments are returned by flag.Args().
+	var positionalArg string
+	args := flag.Args()
+	if len(args) > 0 {
+		positionalArg = args[0]
+	}
+
+	if positionalArg != "" {
+		c.Path = positionalArg
+	} else {
+		c.Path = "."
+	}
+	return c, nil
 }
