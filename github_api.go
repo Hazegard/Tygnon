@@ -83,18 +83,25 @@ func (gapi *GithubApi) GetLatestReleaseId(projectUrl string) (string, error) {
 // GetLatestVersion first attempts to get the latest release tag name.
 // If no release is found, it falls back to getting the latest tag name.
 func (gapi *GithubApi) GetLatestVersion(homepage string) (string, error) {
-	var newVersion string
+
 	release, err := gapi.GetLatestReleaseId(homepage)
-	if err == nil {
-		newVersion = release
-	} else {
-		tag, err := gapi.GetLatestTagId(homepage)
-		if err != nil {
-			return "", fmt.Errorf("error getting latest tag (%s): %w", homepage, err)
-		}
-		newVersion = tag
+	if err != nil {
+		release = "0"
 	}
-	return newVersion, nil
+
+	tag, err := gapi.GetLatestTagId(homepage)
+	if err != nil {
+		tag = "0"
+	}
+	cmp, err := CompareVersions(release, tag)
+	if err != nil {
+		return "", fmt.Errorf("error getting versions: %w", err)
+	}
+	if cmp > 0 {
+		return release, nil
+	}
+	return tag, nil
+
 }
 
 // HttpGet downloads data from the given assetUrl.

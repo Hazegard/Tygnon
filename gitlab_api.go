@@ -69,18 +69,25 @@ func ExtractProjectPath(u string) (string, error) {
 }
 
 func (gapi *GitlabApi) GetLatestVersion(homepage string) (string, error) {
-	newVersion := ""
+
 	release, err := gapi.GetLatestReleaseId(homepage)
-	if err == nil {
-		newVersion = release
-	} else {
-		tag, err := gapi.GetLatestTagId(homepage)
-		if err != nil {
-			return "", fmt.Errorf("error getting latest tag (%s): %s\n", homepage, err)
-		}
-		newVersion = tag
+	if err != nil {
+		release = "0"
 	}
-	return newVersion, nil
+
+	tag, err := gapi.GetLatestTagId(homepage)
+	if err != nil {
+		tag = "0"
+	}
+	cmp, err := CompareVersions(release, tag)
+	if err != nil {
+		return "", fmt.Errorf("error getting versions: %w", err)
+	}
+	if cmp > 0 {
+		return release, nil
+	}
+	return tag, nil
+
 }
 
 func (gapi *GitlabApi) HttpGet(assetUrl string, token string) ([]byte, error) {

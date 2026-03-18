@@ -109,15 +109,6 @@ func (f *FormulaInfo) GitInstance() GitType {
 	if err != nil {
 		return GitType(-1)
 	}
-	fmt.Printf("Trying %s...\n", u.Hostname())
-	fmt.Printf("Trying %s...\n", u.Hostname())
-	fmt.Printf("Trying %s...\n", u.Hostname())
-	fmt.Printf("Trying %s...\n", u.Hostname())
-	fmt.Printf("Trying %s...\n", u.Hostname())
-	fmt.Printf("Trying %s...\n", u.Hostname())
-	fmt.Printf("Trying %s...\n", u.Hostname())
-	fmt.Printf("Trying %s...\n", u.Hostname())
-	fmt.Printf("Trying %s...\n", u.Hostname())
 	switch u.Hostname() {
 	case "github.com":
 		return Github
