@@ -104,12 +104,21 @@ func (f *FormulaInfo) Update() error {
 	return WriteFile(f.File, content)
 }
 
-func (f *FormulaInfo) GitInstance() GitType {
+func (f *FormulaInfo) GetInstance() (string, error) {
 	u, err := url.Parse(f.URL)
+	if err != nil {
+		return "", fmt.Errorf("error parsing formula URL: %s", err)
+	}
+	return u.Hostname(), nil
+}
+
+func (f *FormulaInfo) GitInstance() GitType {
+
+	u, err := f.GetInstance()
 	if err != nil {
 		return GitType(-1)
 	}
-	switch u.Hostname() {
+	switch u {
 	case "github.com":
 		return Github
 	case "gitlab.com":
