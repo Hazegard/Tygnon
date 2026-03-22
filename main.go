@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,8 +19,22 @@ type Config struct {
 	Path    string
 }
 
+const APPNAME = "tygnon"
+
 func main() {
 	l := zerolog.New(os.Stderr).Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).With().Timestamp().Caller().Logger()
+	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
+		p := strings.Split(file, string(filepath.Separator))
+		var result []string
+		for i := len(p) - 1; i >= 0; i-- {
+			if strings.HasPrefix(strings.ToLower(p[i]), APPNAME) {
+				break
+			}
+			result = append(result, p[i])
+		}
+		slices.Reverse(result)
+		return filepath.Join(result...) + ":" + strconv.Itoa(line)
+	}
 	l = l.Level(zerolog.InfoLevel)
 	config, err := parseArgs()
 	if err != nil {
