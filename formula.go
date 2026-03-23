@@ -17,13 +17,13 @@ const (
 
 // FormulaInfo holds the parsed information from a Homebrew formula.
 type FormulaInfo struct {
-	URL      string
-	SHA256   string
-	Version  string
-	Homepage string
-	Desc     string
-	License  string
-	File     string
+	URL         string
+	SHA256      string
+	Version     string
+	Homepage    string
+	License     string
+	File        string
+	Description string
 }
 
 func (f *FormulaInfo) GetNewVersionURL(version string) string {
@@ -77,7 +77,7 @@ func ParseFormula(formulaPath string) (FormulaInfo, error) {
 
 	// Extract description.
 	if match := descRe.FindStringSubmatch(formula); len(match) > 1 {
-		info.Desc = strings.TrimSpace(match[1])
+		info.Description = strings.TrimSpace(match[1])
 	}
 
 	return info, nil
@@ -100,6 +100,11 @@ func (f *FormulaInfo) Update() error {
 	reSHA256 := regexp.MustCompile(`(?m)^(\s*sha256\s+")([^"]+)(".*)$`)
 	// Replace the current sha256 with the new sha256.
 	content = reSHA256.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", f.SHA256))
+
+	// Regular expression to match the sha256 line.
+	reDescription := regexp.MustCompile(`(?m)^(\s*desc\s+")([^"]+)(".*)$`)
+	// Replace the current sha256 with the new sha256.
+	content = reDescription.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", f.Description))
 
 	return WriteFile(f.File, content)
 }

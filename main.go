@@ -16,6 +16,7 @@ import (
 type Config struct {
 	Token   string
 	Verbose bool
+	Force   bool
 	Path    string
 }
 
@@ -105,12 +106,20 @@ func main() {
 			l.Warn().Str("Formula", formula.Version).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
 		}
 		if c == 0 {
-			l.Trace().Str("Formula", formula.Homepage).Str("Version", formula.Version).Msg("No new version, skipping")
-			continue
+			if config.Force {
+				l.Trace().Str("Formula", formula.Homepage).Str("Version", formula.Version).Msg("No new version, but force option enabled, continuing...")
+			} else {
+				l.Trace().Str("Formula", formula.Homepage).Str("Version", formula.Version).Msg("No new version, skipping")
+				continue
+			}
 		}
 		if c > 0 {
-			l.Warn().Str("Formula", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("New version lower than current, skipping...")
-			continue
+			if config.Force {
+				l.Warn().Str("Formula", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("New version lower than current, but force option enabled, continuing...")
+			} else {
+				l.Warn().Str("Formula", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("New version lower than current, skipping...")
+				continue
+			}
 		}
 		l.Info().Str("New", newVersion).Str("Old", formula.Version).Str("Formula", formula.Homepage).Msg("New version found")
 		newReleaseArchive, err := gitClient.HttpGet(newUrl, config.Token)
@@ -118,9 +127,15 @@ func main() {
 		if err != nil {
 			l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.Homepage).Msg("error downloading release")
 		}
+
+		description, err := gitClient.GetDescription(formula.Homepage)
+		if err != nil {
+			l.Warn().Str("Formula", formula.Homepage).Err(err).Msg("error getting description")
+		}
 		newSha256 := Sha256(newReleaseArchive)
 		formula.Version = newVersion
 		formula.SHA256 = newSha256
+		formula.Description = description
 		err = formula.Update()
 		if err != nil {
 			l.Warn().Str("Formula", formula.Homepage).Str("File", formula.File).Err(err).Msg("error updating formula")
@@ -134,6 +149,7 @@ func parseArgs() (Config, error) {
 	// Define the --token flag; it's a required flag so we check it after parsing.
 	token := flag.String("token", "", "The token value (required)")
 	verbose := flag.Bool("v", false, "verbose mode")
+	force := flag.Bool("force", false, "force overwrite")
 
 	// Parse the flags from the command line.
 	flag.Parse()
@@ -144,6 +160,7 @@ func parseArgs() (Config, error) {
 	}
 	c.Token = *token
 	c.Verbose = *verbose
+	c.Force = *force
 
 	// Handle optional positional argument.
 	// All non-flag arguments are returned by flag.Args().

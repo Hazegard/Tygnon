@@ -28,6 +28,17 @@ func NewGithubApi() *GithubApi {
 	}
 }
 
+func (gapi *GithubApi) GetDescription(projectUrl string) (string, error) {
+	repo, _, err := gapi.client.Repositories.Get(context.Background(), "owner", "repo")
+	if err != nil {
+		return "", fmt.Errorf("error getting repo description: %v", err)
+	}
+
+	// GetDescription safely returns the repository description.
+	description := repo.GetDescription()
+	return description, nil
+}
+
 // GetLatestTagId retrieves the latest repository tag from a GitHub repository.
 // The projectUrl should be a full URL (e.g. "https://github.com/owner/repo").
 func (gapi *GithubApi) GetLatestTagId(projectUrl string) (string, error) {

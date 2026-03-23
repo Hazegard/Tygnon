@@ -27,13 +27,29 @@ func NewGitlabApi(token string, url string) (*GitlabApi, error) {
 	}, nil
 }
 
-func (gapi *GitlabApi) GetLatestTagId(projectUrl string) (string, error) {
+func (gapi *GitlabApi) getProject(projectUrl string) (*gitlab.Project, error) {
 	projectPath, err := ExtractProjectPath(projectUrl)
 	if err != nil {
-		return "", fmt.Errorf("error extracting project path: %s", err)
+		return nil, fmt.Errorf("error extracting project path: %s", err)
 	}
 	projectPath = strings.Trim(projectPath, "/")
 	project, _, err := gapi.client.Projects.GetProject(projectPath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error getting project: %s", err)
+	}
+	return project, nil
+}
+
+func (gapi *GitlabApi) GetDescription(projectUrl string) (string, error) {
+	project, err := gapi.getProject(projectUrl)
+	if err != nil {
+		return "", fmt.Errorf("error getting project: %s", err)
+	}
+	return project.Description, nil
+}
+
+func (gapi *GitlabApi) GetLatestTagId(projectUrl string) (string, error) {
+	project, err := gapi.getProject(projectUrl)
 	if err != nil {
 		return "", fmt.Errorf("error getting project: %s", err)
 	}
@@ -69,7 +85,6 @@ func ExtractProjectPath(u string) (string, error) {
 }
 
 func (gapi *GitlabApi) GetLatestVersion(homepage string) (string, error) {
-
 	release, err := gapi.GetLatestReleaseId(homepage)
 	if err != nil {
 		release = "0"
