@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"os"
 	"path/filepath"
 	"slices"
@@ -142,6 +143,30 @@ func main() {
 		}
 	}
 
+	git := NewGit(&l, config)
+
+	log.Info().Str("Path", config.Path).Msg("Running git -p")
+	err = git.AddP()
+	if err != nil {
+		l.Error().Stack().Err(err).Msg("error adding files to staged commit")
+		return
+	}
+
+	log.Info().Str("Path", config.Path).Msg("Commiting files")
+	err = git.CommitFiles()
+	if err != nil {
+		l.Error().Stack().Err(err).Msg("error committing files")
+		return
+	}
+
+	log.Info().Str("Path", config.Path).Msg("Pushing...")
+	err = git.Push()
+	if err != nil {
+		l.Error().Stack().Err(err).Msg("error pushing files")
+		return
+	}
+
+	log.Info().Str("Path", config.Path).Msg("Done!")
 }
 
 func parseArgs() (Config, error) {
