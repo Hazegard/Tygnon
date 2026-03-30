@@ -53,7 +53,7 @@ func (g *Git) CommitFiles() error {
 	if err != nil {
 		return fmt.Errorf("get getting commit files: %w", err)
 	}
-	cmd := exec.Command("git", "-C", g.Config.Path, "commit", "-m", strings.Join(files, "/"))
+	cmd := exec.Command("git", "-C", g.Config.Path, "commit", "-m", fmt.Sprintf("Bump %s", strings.Join(files, "/")))
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
