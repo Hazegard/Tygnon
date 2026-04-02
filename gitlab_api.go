@@ -5,7 +5,6 @@ import (
 	"gitlab.com/gitlab-org/api/client-go"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
@@ -74,14 +73,6 @@ func (gapi *GitlabApi) GetLatestReleaseId(projectUrl string) (string, error) {
 		return "", fmt.Errorf("error getting latest release: %s", err)
 	}
 	return release.TagName, nil
-}
-
-func ExtractProjectPath(u string) (string, error) {
-	uu, err := url.Parse(u)
-	if err != nil {
-		return "", fmt.Errorf("error parsing url: %s", err)
-	}
-	return strings.Trim(uu.Path, "/"), nil
 }
 
 func (gapi *GitlabApi) GetLatestVersion(homepage string) (string, error) {

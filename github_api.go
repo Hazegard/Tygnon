@@ -29,7 +29,11 @@ func NewGithubApi() *GithubApi {
 }
 
 func (gapi *GithubApi) GetDescription(projectUrl string) (string, error) {
-	repo, _, err := gapi.client.Repositories.Get(context.Background(), "owner", "repo")
+	owner, repoName, err := GetOwnerRepo(projectUrl)
+	if err != nil {
+		return "", fmt.Errorf("error getting owner/repo info: %v", err)
+	}
+	repo, _, err := gapi.client.Repositories.Get(context.Background(), owner, repoName)
 	if err != nil {
 		return "", fmt.Errorf("error getting repo description: %v", err)
 	}
@@ -42,17 +46,10 @@ func (gapi *GithubApi) GetDescription(projectUrl string) (string, error) {
 // GetLatestTagId retrieves the latest repository tag from a GitHub repository.
 // The projectUrl should be a full URL (e.g. "https://github.com/owner/repo").
 func (gapi *GithubApi) GetLatestTagId(projectUrl string) (string, error) {
-	projectPath, err := ExtractProjectPath(projectUrl)
+	owner, repo, err := GetOwnerRepo(projectUrl)
 	if err != nil {
-		return "", fmt.Errorf("error extracting project path: %w", err)
+		return "", fmt.Errorf("error getting owner repo: %w", err)
 	}
-	parts := strings.Split(projectPath, "/")
-	if len(parts) < 2 {
-		return "", fmt.Errorf("invalid project path: %s", projectPath)
-	}
-	owner := parts[0]
-	repo := parts[1]
-
 	ctx := context.Background()
 	tags, _, err := gapi.client.Repositories.ListTags(ctx, owner, repo, nil)
 	if err != nil {

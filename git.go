@@ -3,19 +3,18 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/rs/zerolog"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
 )
 
 type Git struct {
-	l      *zerolog.Logger
 	Config Config
 }
 
-func NewGit(l *zerolog.Logger, config Config) *Git {
-	return &Git{l: l, Config: config}
+func NewGit(config Config) *Git {
+	return &Git{Config: config}
 }
 
 func (g *Git) AddP() error {
@@ -25,7 +24,6 @@ func (g *Git) AddP() error {
 	cmd.Stdin = os.Stdin
 	err := cmd.Run()
 	if err != nil {
-		g.l.Error().Err(err).Str("Path", g.Config.Path).Msg("git add failed")
 		return err
 	}
 	return nil
@@ -37,7 +35,6 @@ func (g *Git) GetCommitFiles() ([]string, error) {
 	cmd.Stdout = out
 	err := cmd.Run()
 	if err != nil {
-		g.l.Error().Err(err).Str("Path", g.Config.Path).Msg("git diff failed")
 		return nil, err
 	}
 	files := strings.Split(out.String(), "\n")
@@ -57,8 +54,7 @@ func (g *Git) CommitFiles() error {
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
-		g.l.Error().Err(err).Str("Path", g.Config.Path).Msg("git commit failed")
-		return err
+		return fmt.Errorf("committing files: %w", err)
 	}
 	return nil
 }
@@ -71,4 +67,26 @@ func (g *Git) Push() error {
 		return err
 	}
 	return nil
+}
+
+func ExtractProjectPath(u string) (string, error) {
+	uu, err := url.Parse(u)
+	if err != nil {
+		return "", fmt.Errorf("error parsing url: %s", err)
+	}
+	return strings.Trim(uu.Path, "/"), nil
+}
+
+func GetOwnerRepo(u string) (string, string, error) {
+	projectPath, err := ExtractProjectPath(u)
+	if err != nil {
+		return "", "", fmt.Errorf("error extracting project path: %w", err)
+	}
+	parts := strings.Split(projectPath, "/")
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("invalid project path: %s", projectPath)
+	}
+	owner := parts[0]
+	repo := parts[1]
+	return owner, repo, nil
 }
