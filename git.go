@@ -17,8 +17,14 @@ func NewGit(config Config) *Git {
 	return &Git{Config: config}
 }
 
-func (g *Git) AddP() error {
-	cmd := exec.Command("git", "-C", g.Config.Path, "add", "-p")
+func (g *Git) Add(config Config) error {
+	args := []string{"-C", g.Config.Path, "add"}
+	if config.Interactive {
+		args = append(args, "-p")
+	} else {
+		args = append(args, ".")
+	}
+	cmd := exec.Command("git", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin

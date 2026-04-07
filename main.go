@@ -1,8 +1,6 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -10,14 +8,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog"
 )
 
 type Config struct {
-	Token   string
-	Verbose bool
-	Force   bool
-	Path    string
+	Token       string `name:"token" short:"T" help:"Personal access token" env:""`
+	Verbose     int    `name:"verbose" short:"v" optional:"true" help:"verbose output" type:"counter" default:"0" env:""`
+	Force       bool   `name:"force" short:"f" optional:"true" help:"force overwriting formulas" env:""`
+	Path        string `arg:"" optional:"" help:"path to project directory" default:"."`
+	Interactive bool   `name:"interactive" negatable:"" short:"i" help:"interactive mode" default:"true"`
 }
 
 const APPNAME = "tygnon"
@@ -42,7 +42,7 @@ func main() {
 		l.Error().Stack().Err(err).Msg("error parsing cli arguments")
 		return
 	}
-	if config.Verbose {
+	if config.Verbose > 0 {
 		l = l.Level(zerolog.TraceLevel)
 	}
 
@@ -60,9 +60,10 @@ func main() {
 		}
 		formulas = append(formulas, formula)
 	}
-	//for _, formula := range formulas {
-	//	fmt.Printf("%+v\n", formula)
-	//}
+	if len(formulas) == 0 {
+		l.Warn().Str("Path", config.Path).Msg("no formula files found, aborting")
+		return
+	}
 
 	xmgitlab, err := NewGitlabApi(config.Token, "https://git.example.fr")
 	if err != nil {
@@ -145,7 +146,7 @@ func main() {
 	git := NewGit(config)
 
 	l.Info().Str("Path", config.Path).Msg("Running git -p")
-	err = git.AddP()
+	err = git.Add(config)
 	if err != nil {
 		l.Error().Stack().Err(err).Msg("error adding files to staged commit")
 		return
@@ -170,34 +171,13 @@ func main() {
 
 func parseArgs() (Config, error) {
 	c := Config{}
-	// Define the --token flag; it's a required flag so we check it after parsing.
-	token := flag.String("token", "", "The token value (required)")
-	verbose := flag.Bool("v", false, "verbose mode")
-	force := flag.Bool("force", false, "force overwrite")
 
-	// Parse the flags from the command line.
-	flag.Parse()
-
-	// Validate that the required token flag was provided.
-	if *token == "" {
-		return Config{}, fmt.Errorf("token missing")
+	kongOptions := []kong.Option{
+		kong.Name(APPNAME),
+		kong.Description("Application used to bump releases on internal brew tap"),
+		kong.UsageOnError(),
+		kong.DefaultEnvars(strings.ToUpper(APPNAME)),
 	}
-	c.Token = *token
-	c.Verbose = *verbose
-	c.Force = *force
-
-	// Handle optional positional argument.
-	// All non-flag arguments are returned by flag.Args().
-	var positionalArg string
-	args := flag.Args()
-	if len(args) > 0 {
-		positionalArg = args[0]
-	}
-
-	if positionalArg != "" {
-		c.Path = positionalArg
-	} else {
-		c.Path = "."
-	}
+	_ = kong.Parse(&c, kongOptions...)
 	return c, nil
 }

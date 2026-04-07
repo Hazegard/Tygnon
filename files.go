@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 func ReadFile(path string) (string, error) {
@@ -38,7 +39,7 @@ func FindBrewFormulaFiles(dir string) ([]string, error) {
 		}
 
 		// Skip directories.
-		if info.IsDir() {
+		if info.IsDir() || !strings.HasSuffix(path, ".rb") {
 			return nil
 		}
 
