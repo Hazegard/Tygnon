@@ -37,6 +37,10 @@ func (f *FormulaInfo) GetVersionURL() string {
 	return strings.ReplaceAll(f.URL, "#{version}", f.Version)
 }
 
+func (f *FormulaInfo) GetLocalFile(config Config) string {
+	return strings.TrimPrefix(f.File, config.Path)
+}
+
 // ParseFormula parses a Homebrew formula (as a string)
 // and extracts information such as URL, SHA256, version, etc.
 func ParseFormula(formulaPath string) (FormulaInfo, error) {

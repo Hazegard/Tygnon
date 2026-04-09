@@ -79,8 +79,9 @@ func main() {
 
 	github := NewGithubApi()
 
+	var updatedFormulas []string
 	for _, formula := range formulas {
-		l.Info().Str("Formula", formula.Homepage).Msg("Checking new version...")
+		l.Info().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("Checking new version...")
 		var gitClient GitApi
 		switch formula.GitInstance() {
 		case XmGitlab:
@@ -97,41 +98,41 @@ func main() {
 
 		newVersion, err := gitClient.GetLatestVersion(formula.Homepage)
 		if err != nil {
-			l.Warn().Str("Formula", formula.Homepage).Err(err).Msg("error getting new version")
+			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Err(err).Msg("error getting new version")
 			continue
 		}
 		newVersion = strings.TrimPrefix(newVersion, "v")
 		newUrl := formula.GetNewVersionURL(newVersion)
 		c, err := CompareVersions(formula.Version, newVersion)
 		if err != nil {
-			l.Warn().Str("Formula", formula.Version).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
+			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
 		}
 		if c == 0 {
 			if config.Force {
-				l.Trace().Str("Formula", formula.Homepage).Str("Version", formula.Version).Msg("No new version, but force option enabled, continuing...")
+				l.Trace().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Version", formula.Version).Msg("No new version, but force option enabled, continuing...")
 			} else {
-				l.Trace().Str("Formula", formula.Homepage).Str("Version", formula.Version).Msg("No new version, skipping")
+				l.Trace().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Version", formula.Version).Msg("No new version, skipping")
 				continue
 			}
 		}
 		if c > 0 {
 			if config.Force {
-				l.Warn().Str("Formula", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("New version lower than current, but force option enabled, continuing...")
+				l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("New version lower than current, but force option enabled, continuing...")
 			} else {
-				l.Warn().Str("Formula", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("New version lower than current, skipping...")
+				l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("New version lower than current, skipping...")
 				continue
 			}
 		}
-		l.Info().Str("New", newVersion).Str("Old", formula.Version).Str("Formula", formula.Homepage).Msg("New version found")
+		l.Info().Str("New", newVersion).Str("Old", formula.Version).Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("New version found")
 		newReleaseArchive, err := gitClient.HttpGet(newUrl, config.Token)
 
 		if err != nil {
-			l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.Homepage).Msg("error downloading release")
+			l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("error downloading release")
 		}
 
 		description, err := gitClient.GetDescription(formula.Homepage)
 		if err != nil {
-			l.Warn().Str("Formula", formula.Homepage).Err(err).Msg("error getting description")
+			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Err(err).Msg("error getting description")
 		}
 		newSha256 := Sha256(newReleaseArchive)
 		formula.Version = newVersion
@@ -139,8 +140,19 @@ func main() {
 		formula.Description = description
 		err = formula.Update()
 		if err != nil {
-			l.Warn().Str("Formula", formula.Homepage).Str("File", formula.File).Err(err).Msg("error updating formula")
+			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("File", formula.File).Err(err).Msg("error updating formula")
 		}
+		updatedFormulas = append(updatedFormulas, strings.TrimPrefix(formula.File, config.Path))
+	}
+
+	if len(updatedFormulas) == 0 {
+		l.Info().Str("Path", config.Path).Msg("No new versions found")
+		return
+	}
+	l.Warn().Str("Path", config.Path).Msg("Updated formula files:")
+
+	for _, updatedFormula := range updatedFormulas {
+		l.Warn().Msgf("  - %s", updatedFormula)
 	}
 
 	git := NewGit(config)
