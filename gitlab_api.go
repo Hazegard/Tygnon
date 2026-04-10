@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"gitlab.com/gitlab-org/api/client-go"
 	"io"
 	"net/http"
 	"strings"
+
+	"gitlab.com/gitlab-org/api/client-go"
 )
 
 type GitlabApi struct {
@@ -93,7 +94,6 @@ func (gapi *GitlabApi) GetLatestVersion(homepage string) (string, error) {
 		return release, nil
 	}
 	return tag, nil
-
 }
 
 func (gapi *GitlabApi) HttpGet(assetUrl string, token string) ([]byte, error) {

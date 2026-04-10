@@ -21,7 +21,7 @@ func ReadFile(path string) (string, error) {
 func WriteFile(path string, content string) error {
 	// Convert the string content to a byte slice and write it to the file.
 	// 0644 is the file permission (read and write for the owner, read for others).
-	return os.WriteFile(path, []byte(content), 0644)
+	return os.WriteFile(path, []byte(content), 0o644)
 }
 
 func FindBrewFormulaFiles(dir string) ([]string, error) {
@@ -64,7 +64,6 @@ func FindBrewFormulaFiles(dir string) ([]string, error) {
 }
 
 func Sha256(data []byte) string {
-
 	// Compute the SHA-256 hash
 	hash := sha256.Sum256(data)
 

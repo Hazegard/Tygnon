@@ -125,7 +125,6 @@ func main() {
 		}
 		l.Info().Str("New", newVersion).Str("Old", formula.Version).Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("New version found")
 		newReleaseArchive, err := gitClient.HttpGet(newUrl, config.Token)
-
 		if err != nil {
 			l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("error downloading release")
 		}

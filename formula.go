@@ -90,7 +90,6 @@ func ParseFormula(formulaPath string) (FormulaInfo, error) {
 // Update updates the given Homebrew formula string with new version and sha256 values.
 // It returns the updated formula as a string.
 func (f *FormulaInfo) Update() error {
-
 	content, err := ReadFile(f.File)
 	if err != nil {
 		return fmt.Errorf("error reading formula file: %s", err)
@@ -122,7 +121,6 @@ func (f *FormulaInfo) GetInstance() (string, error) {
 }
 
 func (f *FormulaInfo) GitInstance() GitType {
-
 	u, err := f.GetInstance()
 	if err != nil {
 		return GitType(-1)

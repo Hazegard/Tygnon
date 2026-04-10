@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/Masterminds/semver/v3"
 	"strconv"
 	"strings"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 func CompareVersionsSemver(current, _new string) (int, error) {
