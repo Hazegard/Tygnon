@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,11 +14,11 @@ import (
 )
 
 type Config struct {
-	Token       string `name:"token" short:"T" help:"Personal access token" env:""`
-	Verbose     int    `name:"verbose" short:"v" optional:"true" help:"verbose output" type:"counter" default:"0" env:""`
-	Force       bool   `name:"force" short:"f" optional:"true" help:"force overwriting formulas" env:""`
-	Path        string `arg:"" optional:"" help:"path to project directory" default:"."`
-	Interactive bool   `name:"interactive" negatable:"" short:"i" help:"interactive mode" default:"true"`
+	Tokens      map[string]string `name:"token" short:"T" help:"Personal access token" env:""`
+	Verbose     int               `name:"verbose" short:"v" optional:"true" help:"verbose output" type:"counter" default:"0" env:""`
+	Force       bool              `name:"force" short:"f" optional:"true" help:"force overwriting formulas" env:""`
+	Path        string            `arg:"" optional:"" help:"path to project directory" default:"."`
+	Interactive bool              `name:"interactive" negatable:"" short:"i" help:"interactive mode" default:"true"`
 }
 
 const APPNAME = "tygnon"
@@ -65,37 +66,32 @@ func main() {
 		return
 	}
 
-	xmgitlab, err := NewGitlabApi(config.Token, "https://git.example.fr")
-	if err != nil {
-		l.Error().Stack().Err(err).Msg("error creating private gitlab api client")
-		return
-	}
-
-	gitlab, err := NewGitlabApi("", "https://gitlab.com")
-	if err != nil {
-		l.Error().Stack().Err(err).Msg("error creating gitlab api client")
-		return
-	}
-
-	github := NewGithubApi()
-
 	var updatedFormulas []string
 	for _, formula := range formulas {
 		l.Info().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("Checking new version...")
 		var gitClient GitApi
+		gitDomain, err := formula.GetInstance()
+		if err != nil {
+			l.Error().Stack().Err(err).Msg("error getting git client")
+		}
 		switch formula.GitInstance() {
 		case XmGitlab:
-			gitClient = xmgitlab
+			gitClient, err = NewGitlabApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 		case Gitlab:
-			gitClient = gitlab
+			gitClient, err = NewGitlabApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 		case Github:
-			gitClient = github
+			gitClient = NewGithubApi()
+		case Gitea:
+			gitClient, err = NewGiteaApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 		default:
 			instance, _ := formula.GetInstance()
 			l.Info().Str("Instance", instance).Msg("Unknown git instance")
 			continue
 		}
-
+		if err != nil {
+			l.Error().Stack().Err(err).Msg("error creating private gitlab api client")
+			return
+		}
 		newVersion, err := gitClient.GetLatestVersion(formula.Homepage)
 		if err != nil {
 			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Err(err).Msg("error getting new version")
@@ -124,7 +120,7 @@ func main() {
 			}
 		}
 		l.Info().Str("New", newVersion).Str("Old", formula.Version).Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("New version found")
-		newReleaseArchive, err := gitClient.HttpGet(newUrl, config.Token)
+		newReleaseArchive, err := gitClient.HttpGet(newUrl, config.Tokens[gitDomain])
 		if err != nil {
 			l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("error downloading release")
 		}

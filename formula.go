@@ -13,6 +13,7 @@ const (
 	Gitlab   GitType = iota
 	XmGitlab GitType = iota
 	Github   GitType = iota
+	Gitea    GitType = iota
 )
 
 // FormulaInfo holds the parsed information from a Homebrew formula.
@@ -132,6 +133,8 @@ func (f *FormulaInfo) GitInstance() GitType {
 		return Gitlab
 	case "git.example.fr":
 		return XmGitlab
+	case "git.hazegard.fr":
+		return Gitea
 	default:
 		return GitType(-1)
 	}
