@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -136,6 +138,37 @@ func (f *FormulaInfo) GitInstance() GitType {
 	case "git.hazegard.fr":
 		return Gitea
 	default:
+		return f.FingerPrintInstance()
+	}
+}
+
+func (f *FormulaInfo) FingerPrintInstance() GitType {
+	u, err := f.GetInstance()
+	if err != nil {
 		return GitType(-1)
 	}
+	uu, err := url.Parse(u)
+	if err != nil {
+		return GitType(-1)
+	}
+	req, err := http.NewRequest("GET", uu.Hostname(), nil)
+	if err != nil {
+		return GitType(-1)
+	}
+	defer req.Body.Close()
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return GitType(-1)
+	}
+
+	if strings.Contains(string(body), "<a href=\"https://about.gitlab.com\">About GitLab</a>") {
+		return Gitlab
+	}
+	if strings.Contains(strings.ToLower(string(body)), "gitea") || strings.Contains(strings.ToLower(string(body)), "forgejo") {
+		return Gitea
+	}
+	if strings.Contains(string(body), "<link rel=\"dns-prefetch\" href=\"https://github.githubassets.com\">") {
+		return Github
+	}
+	return GitType(-1)
 }
