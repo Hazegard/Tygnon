@@ -46,7 +46,11 @@ func (g *Git) GetCommitFiles() ([]string, error) {
 	files := strings.Split(out.String(), "\n")
 	var trimmedFiles []string
 	for _, file := range files {
-		trimmedFiles = append(trimmedFiles, strings.TrimSuffix(file, ".rb"))
+		trimmedFile := strings.TrimSuffix(file, ".rb")
+		if trimmedFile != "" {
+			continue
+		}
+		trimmedFiles = append(trimmedFiles, trimmedFile)
 	}
 	return trimmedFiles, nil
 }
