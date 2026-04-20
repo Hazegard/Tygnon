@@ -88,6 +88,47 @@ func (gapi *GithubApi) GetLatestReleaseId(projectUrl string) (string, error) {
 	return release.GetName(), nil
 }
 
+func (gapi *GithubApi) GetMasterVersionId(projectUrl string) (string, error) {
+	ctx := context.Background()
+	owner, repoName, err := GetOwnerRepo(projectUrl)
+	if err != nil {
+		return "", fmt.Errorf("error getting owner/repo info: %v", err)
+	}
+	// Get repository details to obtain the default branch.
+	repository, _, err := gapi.client.Repositories.Get(ctx, owner, repoName)
+	if err != nil {
+		return "", fmt.Errorf("error getting repository: %w", err)
+	}
+	opts := &github.CommitsListOptions{
+		SHA: repository.GetDefaultBranch(),
+		ListOptions: github.ListOptions{
+			Page:    1,
+			PerPage: 1,
+		},
+	}
+	commits, resp, err := gapi.client.Repositories.ListCommits(ctx, owner, repoName, opts)
+	if err != nil {
+		return "", fmt.Errorf("error listing commits: %w", err)
+	}
+	if len(commits) == 0 {
+		return "", fmt.Errorf("no commits found on branch %s", repository.GetDefaultBranch())
+	}
+	
+	commitCount := resp.LastPage
+	if commitCount == 0 {
+		commitCount = 1
+	}
+
+	// Use the first commit's SHA (shortened to 8 characters).
+	commitSHA := commits[0].GetSHA()
+	shortSHA := commitSHA
+	if len(commitSHA) > 8 {
+		shortSHA = commitSHA[:8]
+	}
+
+	return fmt.Sprintf("%d.%s", commitCount, shortSHA), nil
+}
+
 // GetLatestVersion first attempts to get the latest release tag name.
 // If no release is found, it falls back to getting the latest tag name.
 func (gapi *GithubApi) GetLatestVersion(homepage string) (string, error) {

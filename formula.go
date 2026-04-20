@@ -27,6 +27,7 @@ type FormulaInfo struct {
 	License     string
 	File        string
 	Description string
+	Instance    GitType
 }
 
 func (f *FormulaInfo) GetNewVersionURL(version string) string {
@@ -86,6 +87,7 @@ func ParseFormula(formulaPath string) (FormulaInfo, error) {
 	if match := descRe.FindStringSubmatch(formula); len(match) > 1 {
 		info.Description = strings.TrimSpace(match[1])
 	}
+	info.Instance = info.gitInstance()
 
 	return info, nil
 }
@@ -123,7 +125,7 @@ func (f *FormulaInfo) GetInstance() (string, error) {
 	return u.Hostname(), nil
 }
 
-func (f *FormulaInfo) GitInstance() GitType {
+func (f *FormulaInfo) gitInstance() GitType {
 	u, err := f.GetInstance()
 	if err != nil {
 		return GitType(-1)
@@ -138,11 +140,11 @@ func (f *FormulaInfo) GitInstance() GitType {
 	case "git.hazegard.fr":
 		return Gitea
 	default:
-		return f.FingerPrintInstance()
+		return f.fingerPrintInstance()
 	}
 }
 
-func (f *FormulaInfo) FingerPrintInstance() GitType {
+func (f *FormulaInfo) fingerPrintInstance() GitType {
 	u, err := f.GetInstance()
 	if err != nil {
 		return GitType(-1)
@@ -171,4 +173,27 @@ func (f *FormulaInfo) FingerPrintInstance() GitType {
 		return Github
 	}
 	return GitType(-1)
+}
+
+func (f *FormulaInfo) IsOnMaster() (bool, error) {
+	u, err := url.Parse(f.URL)
+	if err != nil {
+		return false, fmt.Errorf("error parsing formula URL: %s", err)
+	}
+	switch f.Instance {
+	case Github:
+		if strings.HasSuffix(u.Path, "/archive/refs/heads/main.zip") {
+			return true, nil
+		}
+	case Gitlab, XmGitlab:
+		re := regexp.MustCompile(`/archive/master/.*\.zip`)
+		if re.MatchString(u.Path) {
+			return true, nil
+		}
+	case Gitea:
+		if strings.HasSuffix(u.Path, "/archive/main.zip") {
+			return true, nil
+		}
+	}
+	return false, nil
 }

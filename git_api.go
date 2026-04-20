@@ -6,4 +6,5 @@ type GitApi interface {
 	GetLatestVersion(homepage string) (string, error)
 	GetDescription(homepage string) (string, error)
 	HttpGet(assetUrl string, token string) ([]byte, error)
+	GetMasterVersionId(projectUrl string) (string, error)
 }

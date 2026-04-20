@@ -74,6 +74,71 @@ func (api *GiteaApi) GetLatestReleaseId(projectUrl string) (string, error) {
 	return release.TagName, nil
 }
 
+func (api *GiteaApi) GetMasterVersionId(projectUrl string) (string, error) {
+	owner, repoName, err := GetOwnerRepo(projectUrl)
+	if err != nil {
+		return "", fmt.Errorf("error getting owner repo: %s", err)
+	}
+	// Get repository details to obtain the default branch.
+	repository, _, err := api.client.GetRepo(owner, repoName)
+	if err != nil {
+		return "", fmt.Errorf("error getting repository: %w", err)
+	}
+
+	// List commits on the default branch with a page size of 1.
+	commits, resp, err := api.client.ListRepoCommits(owner, repoName, gitea.ListCommitOptions{
+		SHA: repository.DefaultBranch,
+		ListOptions: gitea.ListOptions{
+			Page:     1,
+			PageSize: 1,
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("error listing commits: %w", err)
+	}
+	if len(commits) == 0 {
+		return "", fmt.Errorf("no commits found on branch %s", repository.DefaultBranch)
+	}
+
+	opts := gitea.ListCommitOptions{
+		SHA: repository.DefaultBranch,
+		ListOptions: gitea.ListOptions{
+			Page:     1,
+			PageSize: 1,
+		},
+	}
+	count := 0
+	// Loop through pages until there are no more commits.
+	for {
+		commits, resp, err := api.client.ListRepoCommits(owner, repoName, opts)
+		if err != nil {
+			return "", err
+		}
+
+		count += len(commits)
+
+		// If there are no more pages, break out of the loop.
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+
+	if count == 0 {
+		return "", fmt.Errorf("no commits found on branch %s", repository.DefaultBranch)
+	}
+	commitCount := resp.LastPage
+	if commitCount == 0 {
+		commitCount = 1
+	}
+	// Get the short commit SHA (first 8 characters).
+	shortCommit := commits[0].SHA
+	if len(shortCommit) > 8 {
+		shortCommit = shortCommit[:8]
+	}
+	return fmt.Sprintf("%d.%s", commitCount, shortCommit), nil
+}
+
 func (api *GiteaApi) GetLatestVersion(projectUrl string) (string, error) {
 	release, err := api.GetLatestReleaseId(projectUrl)
 	if err != nil {

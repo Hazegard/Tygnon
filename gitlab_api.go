@@ -76,6 +76,58 @@ func (gapi *GitlabApi) GetLatestReleaseId(projectUrl string) (string, error) {
 	return release.TagName, nil
 }
 
+func (gapi *GitlabApi) GetMasterVersionId(projectUrl string) (string, error) {
+	projectPath, err := ExtractProjectPath(projectUrl)
+	if err != nil {
+		return "", fmt.Errorf("error extracting project path: %s", err)
+	}
+	project, _, err := gapi.client.Projects.GetProject(projectPath, nil)
+	if err != nil {
+		return "", fmt.Errorf("error getting project: %s (%s)", err, projectPath)
+	}
+
+	commits, _, err := gapi.client.Commits.ListCommits(project.ID, &gitlab.ListCommitsOptions{
+		ListOptions: gitlab.ListOptions{
+			Page:    1,
+			PerPage: 1,
+		},
+		RefName: &project.DefaultBranch,
+	})
+	if len(commits) == 0 {
+		return "", fmt.Errorf("no commits found on branch %s", project.DefaultBranch)
+	}
+	if err != nil {
+		return "", fmt.Errorf("error listing commits: %s", err)
+	}
+	ID := commits[0].ShortID
+
+	count := 0
+	opts := &gitlab.ListCommitsOptions{
+		RefName: &project.DefaultBranch,
+		ListOptions: gitlab.ListOptions{
+			Page:    1,
+			PerPage: 50, // adjust as needed
+		},
+	}
+	// Loop through pages until there are no more commits.
+	for {
+		commits, resp, err := gapi.client.Commits.ListCommits(project.ID, opts)
+		if err != nil {
+			return "", err
+		}
+
+		count += len(commits)
+
+		// If there are no more pages, break out of the loop.
+		if resp.CurrentPage >= resp.TotalPages {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+
+	return fmt.Sprintf("%d.%s", count, ID), nil
+}
+
 func (gapi *GitlabApi) GetLatestVersion(homepage string) (string, error) {
 	release, err := gapi.GetLatestReleaseId(homepage)
 	if err != nil {
@@ -104,6 +156,7 @@ func (gapi *GitlabApi) HttpGet(assetUrl string, token string) ([]byte, error) {
 	if token != "" {
 		req.Header.Set("PRIVATE-TOKEN", token)
 	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed to download asset: %w", err)
@@ -113,9 +166,12 @@ func (gapi *GitlabApi) HttpGet(assetUrl string, token string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return []byte{}, fmt.Errorf("failed to download asset, status: %s", resp.Status)
 	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed to download asset: %w", err)
+
 	}
+
 	return body, nil
 }

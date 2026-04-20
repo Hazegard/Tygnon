@@ -19,6 +19,7 @@ type Config struct {
 	Force       bool              `name:"force" short:"f" optional:"true" help:"force overwriting formulas" env:""`
 	Path        string            `arg:"" optional:"" help:"path to project directory" default:"."`
 	Interactive bool              `name:"interactive" negatable:"" short:"i" help:"interactive mode" default:"true"`
+	NoPush      bool              `name:"no-push" help:"disable git push" default:"false"`
 }
 
 const APPNAME = "tygnon"
@@ -74,7 +75,7 @@ func main() {
 		if err != nil {
 			l.Error().Stack().Err(err).Msg("error getting git client")
 		}
-		switch formula.GitInstance() {
+		switch formula.Instance {
 		case XmGitlab:
 			gitClient, err = NewGitlabApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 		case Gitlab:
@@ -92,16 +93,36 @@ func main() {
 			l.Error().Stack().Err(err).Msg("error creating private gitlab api client")
 			return
 		}
-		newVersion, err := gitClient.GetLatestVersion(formula.Homepage)
+		newUrl := ""
+		c := 0
+		newVersion := ""
+		isMaster, err := formula.IsOnMaster()
 		if err != nil {
-			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Err(err).Msg("error getting new version")
-			continue
+			l.Error().Err(err).Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("error checking if new version is on-master")
 		}
-		newVersion = strings.TrimPrefix(newVersion, "v")
-		newUrl := formula.GetNewVersionURL(newVersion)
-		c, err := CompareVersions(formula.Version, newVersion)
-		if err != nil {
-			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
+
+		if !isMaster {
+			newVersion, err = gitClient.GetLatestVersion(formula.Homepage)
+			if err != nil {
+				l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Err(err).Msg("error getting new version")
+				continue
+			}
+			newVersion = strings.TrimPrefix(newVersion, "v")
+			newUrl = formula.GetNewVersionURL(newVersion)
+			c, err = CompareVersions(formula.Version, newVersion)
+			if err != nil {
+				l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
+			}
+		} else {
+			newUrl = formula.URL
+			newVersion, err = gitClient.GetMasterVersionId(formula.Homepage)
+			if err != nil {
+				l.Error().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Stack().Err(err).Msg("error getting new version from master")
+			}
+			c, err = CompareVersions(formula.Version, newVersion)
+			if err != nil {
+				l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
+			}
 		}
 		if c == 0 {
 			if config.Force {
@@ -124,11 +145,13 @@ func main() {
 		if err != nil {
 			l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("error downloading release")
 		}
+		fmt.Println(newReleaseArchive)
 
 		description, err := gitClient.GetDescription(formula.Homepage)
 		if err != nil {
 			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Err(err).Msg("error getting description")
 		}
+		fmt.Println(description)
 		newSha256 := Sha256(newReleaseArchive)
 		formula.Version = newVersion
 		formula.SHA256 = newSha256
@@ -166,11 +189,13 @@ func main() {
 		return
 	}
 
-	l.Info().Str("Path", config.Path).Msg("Pushing...")
-	err = git.Push()
-	if err != nil {
-		l.Error().Stack().Err(err).Msg("error pushing files")
-		return
+	if !config.NoPush {
+		l.Info().Str("Path", config.Path).Msg("Pushing...")
+		err = git.Push()
+		if err != nil {
+			l.Error().Stack().Err(err).Msg("error pushing files")
+			return
+		}
 	}
 
 	l.Info().Str("Path", config.Path).Msg("Done!")
