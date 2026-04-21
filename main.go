@@ -145,13 +145,11 @@ func main() {
 		if err != nil {
 			l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Msg("error downloading release")
 		}
-		fmt.Println(newReleaseArchive)
 
 		description, err := gitClient.GetDescription(formula.Homepage)
 		if err != nil {
 			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Err(err).Msg("error getting description")
 		}
-		fmt.Println(description)
 		newSha256 := Sha256(newReleaseArchive)
 		formula.Version = newVersion
 		formula.SHA256 = newSha256
