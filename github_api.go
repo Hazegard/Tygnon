@@ -113,7 +113,7 @@ func (gapi *GithubApi) GetMasterVersionId(projectUrl string) (string, error) {
 	if len(commits) == 0 {
 		return "", fmt.Errorf("no commits found on branch %s", repository.GetDefaultBranch())
 	}
-	
+
 	commitCount := resp.LastPage
 	if commitCount == 0 {
 		commitCount = 1
