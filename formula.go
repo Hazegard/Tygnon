@@ -12,10 +12,9 @@ import (
 type GitType int
 
 const (
-	Gitlab   GitType = iota
-	XmGitlab GitType = iota
-	Github   GitType = iota
-	Gitea    GitType = iota
+	Gitlab GitType = iota
+	Github GitType = iota
+	Gitea  GitType = iota
 )
 
 // FormulaInfo holds the parsed information from a Homebrew formula.
@@ -135,10 +134,6 @@ func (f *FormulaInfo) gitInstance() GitType {
 		return Github
 	case "gitlab.com":
 		return Gitlab
-	case "git.example.fr":
-		return XmGitlab
-	case "git.hazegard.fr":
-		return Gitea
 	default:
 		return f.fingerPrintInstance()
 	}
@@ -185,7 +180,7 @@ func (f *FormulaInfo) IsOnMaster() (bool, error) {
 		if strings.HasSuffix(u.Path, "/archive/refs/heads/main.zip") {
 			return true, nil
 		}
-	case Gitlab, XmGitlab:
+	case Gitlab:
 		re := regexp.MustCompile(`/archive/master/.*\.zip`)
 		if re.MatchString(u.Path) {
 			return true, nil

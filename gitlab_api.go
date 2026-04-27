@@ -22,7 +22,7 @@ func NewGitlabApi(token string, url string) (*GitlabApi, error) {
 	}
 	return &GitlabApi{
 		token:  token,
-		url:    "https://git.example.fr/api/v4/",
+		url:    fmt.Sprintf("%s/api/v4", url),
 		client: client,
 	}, nil
 }

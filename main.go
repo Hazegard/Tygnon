@@ -76,8 +76,6 @@ func main() {
 			l.Error().Stack().Err(err).Msg("error getting git client")
 		}
 		switch formula.Instance {
-		case XmGitlab:
-			gitClient, err = NewGitlabApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 		case Gitlab:
 			gitClient, err = NewGitlabApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 		case Github:
