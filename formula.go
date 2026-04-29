@@ -144,16 +144,13 @@ func (f *FormulaInfo) fingerPrintInstance() GitType {
 	if err != nil {
 		return GitType(-1)
 	}
-	uu, err := url.Parse(u)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s", u), nil)
 	if err != nil {
 		return GitType(-1)
 	}
-	req, err := http.NewRequest("GET", uu.Hostname(), nil)
-	if err != nil {
-		return GitType(-1)
-	}
-	defer req.Body.Close()
-	body, err := io.ReadAll(req.Body)
+	res, err := http.DefaultClient.Do(req)
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return GitType(-1)
 	}
