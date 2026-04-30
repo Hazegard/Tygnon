@@ -86,7 +86,11 @@ func ParseFormula(formulaPath string) (FormulaInfo, error) {
 	if match := descRe.FindStringSubmatch(formula); len(match) > 1 {
 		info.Description = strings.TrimSpace(match[1])
 	}
-	info.Instance = info.gitInstance()
+	instance, err := info.gitInstance()
+	if err != nil {
+		return FormulaInfo{}, fmt.Errorf("error getting git instance: %s", err)
+	}
+	info.Instance = instance
 
 	return info, nil
 }
@@ -124,47 +128,46 @@ func (f *FormulaInfo) GetInstance() (string, error) {
 	return u.Hostname(), nil
 }
 
-func (f *FormulaInfo) gitInstance() GitType {
+func (f *FormulaInfo) gitInstance() (GitType, error) {
 	u, err := f.GetInstance()
 	if err != nil {
-		return GitType(-1)
+		return GitType(-1), fmt.Errorf("error parsing git instance url: %s", err)
 	}
 	switch u {
 	case "github.com":
-		return Github
+		return Github, nil
 	case "gitlab.com":
-		return Gitlab
+		return Gitlab, nil
 	default:
 		return f.fingerPrintInstance()
 	}
 }
 
-func (f *FormulaInfo) fingerPrintInstance() GitType {
+func (f *FormulaInfo) fingerPrintInstance() (GitType, error) {
 	u, err := f.GetInstance()
 	if err != nil {
-		return GitType(-1)
+		return GitType(-1), nil
 	}
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s", u), nil)
+	res, err := http.Get(fmt.Sprintf("https://%s", u))
 	if err != nil {
-		return GitType(-1)
+		return GitType(-1), fmt.Errorf("error fetching fingerPrint instance: %s", err)
 	}
-	res, err := http.DefaultClient.Do(req)
 	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return GitType(-1)
+		return GitType(-1), fmt.Errorf("error reading fingerPrint response: %s", err)
 	}
 
 	if strings.Contains(string(body), "<a href=\"https://about.gitlab.com\">About GitLab</a>") {
-		return Gitlab
+		return Gitlab, nil
 	}
 	if strings.Contains(strings.ToLower(string(body)), "gitea") || strings.Contains(strings.ToLower(string(body)), "forgejo") {
-		return Gitea
+		return Gitea, nil
 	}
 	if strings.Contains(string(body), "<link rel=\"dns-prefetch\" href=\"https://github.githubassets.com\">") {
-		return Github
+		return Github, nil
 	}
-	return GitType(-1)
+	return GitType(-1), fmt.Errorf("no corresponding git instance found: %s", u)
 }
 
 func (f *FormulaInfo) IsOnMaster() (bool, error) {

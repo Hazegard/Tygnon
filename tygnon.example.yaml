@@ -1,0 +1,21 @@
+# force overwriting formulas
+force: false
+
+# generate config file
+generate-config: false
+
+# interactive mode
+interactive: true
+
+# disable git push
+no-push: false
+
+# Personal access token
+token:
+  gitlab.com: GL_PERSONAL_ACCESS_TOKEN
+  github.com: GH_PERSONAL_ACCESS_TOKEN
+  git.example.com: GL_EXAMPLE_PERSONAL_ACCESS_TOKEN
+
+# verbose output
+verbose: 0
+

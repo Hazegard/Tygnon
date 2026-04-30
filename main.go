@@ -9,18 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog"
 )
-
-type Config struct {
-	Tokens      map[string]string `name:"token" short:"T" help:"Personal access token" env:""`
-	Verbose     int               `name:"verbose" short:"v" optional:"true" help:"verbose output" type:"counter" default:"0" env:""`
-	Force       bool              `name:"force" short:"f" optional:"true" help:"force overwriting formulas" env:""`
-	Path        string            `arg:"" optional:"" help:"path to project directory" default:"."`
-	Interactive bool              `name:"interactive" negatable:"" short:"i" help:"interactive mode" default:"true"`
-	NoPush      bool              `name:"no-push" help:"disable git push" default:"false"`
-}
 
 const APPNAME = "tygnon"
 
@@ -42,6 +32,15 @@ func main() {
 	config, err := parseArgs()
 	if err != nil {
 		l.Error().Stack().Err(err).Msg("error parsing cli arguments")
+		return
+	}
+	if config.GenerateConfig {
+		yamlConfig, err := config.GenConfig()
+		if err != nil {
+			l.Error().Stack().Err(err).Msg("error generating config")
+			return
+		}
+		fmt.Println(yamlConfig)
 		return
 	}
 	if config.Verbose > 0 {
@@ -79,7 +78,7 @@ func main() {
 		case Gitlab:
 			gitClient, err = NewGitlabApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 		case Github:
-			gitClient = NewGithubApi()
+			gitClient = NewGithubApi(config.Tokens[gitDomain])
 		case Gitea:
 			gitClient, err = NewGiteaApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 		default:
@@ -195,17 +194,4 @@ func main() {
 	}
 
 	l.Info().Str("Path", config.Path).Msg("Done!")
-}
-
-func parseArgs() (Config, error) {
-	c := Config{}
-
-	kongOptions := []kong.Option{
-		kong.Name(APPNAME),
-		kong.Description("Application used to bump releases on internal brew tap"),
-		kong.UsageOnError(),
-		kong.DefaultEnvars(strings.ToUpper(APPNAME)),
-	}
-	_ = kong.Parse(&c, kongOptions...)
-	return c, nil
 }

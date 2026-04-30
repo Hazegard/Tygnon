@@ -18,8 +18,11 @@ type GithubApi struct {
 
 // NewGithubApi creates a new GitHub client using the provided token and base URL.
 // If a non-default URL is provided, it attempts to create an Enterprise client.
-func NewGithubApi() *GithubApi {
-	client := github.NewClient(&http.Client{})
+func NewGithubApi(token string) *GithubApi {
+	client := github.NewClient(nil)
+	if token != "" {
+		client.WithAuthToken(token)
+	}
 	baseURL := "https://api.github.com/"
 
 	return &GithubApi{
