@@ -21,7 +21,7 @@ type GithubApi struct {
 func NewGithubApi(token string) *GithubApi {
 	client := github.NewClient(nil)
 	if token != "" {
-		client.WithAuthToken(token)
+		client = client.WithAuthToken(token)
 	}
 	baseURL := "https://api.github.com/"
 

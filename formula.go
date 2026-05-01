@@ -177,7 +177,9 @@ func (f *FormulaInfo) IsOnMaster() (bool, error) {
 	}
 	switch f.Instance {
 	case Github:
-		if strings.HasSuffix(u.Path, "/archive/refs/heads/main.zip") {
+		re := regexp.MustCompile(`/archive/refs/heads/.*\.zip`)
+		//if strings.HasSuffix(u.Path, "/archive/refs/heads/main.zip") || strings.HasSuffix(u.Path, "/archive/refs/heads/master.zip") {
+		if re.MatchString(u.Path) {
 			return true, nil
 		}
 	case Gitlab:
