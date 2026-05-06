@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
-	"strconv"
+	"runtime"
 	"strings"
 	"time"
 
@@ -14,19 +13,19 @@ import (
 
 const APPNAME = "tygnon"
 
+func GetRoot() string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return ""
+	}
+	return filepath.Dir(file)
+}
+
 func main() {
+	root := GetRoot()
 	l := zerolog.New(os.Stderr).Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).With().Timestamp().Caller().Logger()
 	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
-		p := strings.Split(file, string(filepath.Separator))
-		var result []string
-		for i := len(p) - 1; i >= 0; i-- {
-			if strings.HasPrefix(strings.ToLower(p[i]), APPNAME) {
-				break
-			}
-			result = append(result, p[i])
-		}
-		slices.Reverse(result)
-		return filepath.Join(result...) + ":" + strconv.Itoa(line)
+		return fmt.Sprintf("%s:%d", strings.TrimPrefix(file, root+"/"), line)
 	}
 	l = l.Level(zerolog.InfoLevel)
 	config, err := parseArgs()
