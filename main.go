@@ -166,6 +166,14 @@ func main() {
 	for _, updatedFormula := range updatedFormulas {
 		l.Warn().Msgf("  - %s", updatedFormula)
 	}
+	
+	if config.HooksFolder != "" {
+		l.Info().Str("Folder", config.HooksFolder).Msg("Executing hooks")
+
+		for _, updatedFormula := range updatedFormulas {
+			_ = Hook(config, updatedFormula)
+		}
+	}
 
 	git := NewGit(config)
 
