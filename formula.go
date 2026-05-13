@@ -183,7 +183,7 @@ func (f *FormulaInfo) IsOnMaster() (bool, error) {
 			return true, nil
 		}
 	case Gitlab:
-		re := regexp.MustCompile(`/archive/master/.*\.zip`)
+		re := regexp.MustCompile(`/archive/master/.*\.(zip|tar\.gz|tar|tar\.bz2)`)
 		if re.MatchString(u.Path) {
 			return true, nil
 		}
