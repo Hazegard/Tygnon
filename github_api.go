@@ -134,7 +134,7 @@ func (gapi *GithubApi) GetMasterVersionId(projectUrl string) (string, error) {
 
 // GetLatestVersion first attempts to get the latest release tag name.
 // If no release is found, it falls back to getting the latest tag name.
-func (gapi *GithubApi) GetLatestVersion(homepage string) (string, error) {
+func (gapi *GithubApi) GetLatestVersion(homepage string, onMaster bool) (string, error) {
 	release, err := gapi.GetLatestReleaseId(homepage)
 	if err != nil {
 		release = "0"
@@ -144,7 +144,7 @@ func (gapi *GithubApi) GetLatestVersion(homepage string) (string, error) {
 	if err != nil {
 		tag = "0"
 	}
-	cmp, err := CompareVersions(release, tag)
+	cmp, err := CompareVersions(release, tag, onMaster)
 	if err != nil {
 		return "", fmt.Errorf("error getting versions: %w", err)
 	}

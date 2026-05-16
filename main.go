@@ -98,27 +98,24 @@ func main() {
 		}
 
 		if !isMaster {
-			newVersion, err = gitClient.GetLatestVersion(formula.Homepage)
+			newVersion, err = gitClient.GetLatestVersion(formula.Homepage, isMaster)
 			if err != nil {
 				l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Err(err).Msg("error getting new version")
 				continue
 			}
 			newVersion = strings.TrimPrefix(newVersion, "v")
 			newUrl = formula.GetNewVersionURL(newVersion)
-			c, err = CompareVersions(formula.Version, newVersion)
-			if err != nil {
-				l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
-			}
 		} else {
 			newUrl = formula.URL
 			newVersion, err = gitClient.GetMasterVersionId(formula.Homepage)
 			if err != nil {
 				l.Error().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Stack().Err(err).Msg("error getting new version from master")
 			}
-			c, err = CompareVersions(formula.Version, newVersion)
-			if err != nil {
-				l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
-			}
+		}
+		l.Debug().Str("New", newVersion).Str("Old", formula.Version).Str("Url", formula.Homepage).Msg("Comparing versions...")
+		c, err = CompareVersions(formula.Version, newVersion, isMaster)
+		if err != nil {
+			l.Warn().Str("Formula", formula.GetLocalFile(config)).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
 		}
 		if c == 0 {
 			if config.Force {
@@ -166,7 +163,7 @@ func main() {
 	for _, updatedFormula := range updatedFormulas {
 		l.Warn().Msgf("  - %s", updatedFormula)
 	}
-	
+
 	if config.HooksFolder != "" {
 		l.Info().Str("Folder", config.HooksFolder).Msg("Executing hooks")
 

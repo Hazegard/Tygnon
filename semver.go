@@ -20,9 +20,9 @@ func CompareVersionsSemver(current, _new string) (int, error) {
 	return currentVersion.Compare(newVersion), nil
 }
 
-func CompareVersions(current, _new string) (int, error) {
+func CompareVersions(current, _new string, onMaster bool) (int, error) {
 	i, err := CompareVersionsSemver(current, _new)
-	if err == nil {
+	if err == nil && !(onMaster && i == 0) {
 		return i, nil
 	}
 	i = CompareVersionsBourrin(current, _new)
