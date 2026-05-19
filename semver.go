@@ -21,19 +21,23 @@ func CompareVersionsSemver(current, _new string) (int, error) {
 }
 
 func CompareVersions(current, _new string, onMaster bool) (int, error) {
-	i, err := CompareVersionsSemver(current, _new)
-	if err == nil && !(onMaster && i == 0) {
-		return i, nil
-	}
-	i = CompareVersionsBourrin(current, _new)
+	// i, err := CompareVersionsSemver(current, _new)
+	// if err == nil && !(onMaster && i == 0) {
+	// 	return i, nil
+	// }
+	i := CompareVersionsBourrin(current, _new)
 	return i, nil
 }
 
 // CompareVersionsBourrin compares two version strings (e.g., "1.2.3" vs "1.2.4").
 // It returns 1 if v1 is greater than v2, -1 if v1 is less than v2, and 0 if they are equal.
 func CompareVersionsBourrin(v1, v2 string) int {
-	parts1 := strings.Split(v1, ".")
-	parts2 := strings.Split(v2, ".")
+	parts1 := strings.FieldsFunc(v1, func(r rune) bool {
+		return r == '.' || r == '-'
+	})
+	parts2 := strings.FieldsFunc(v2, func(r rune) bool {
+		return r == '.' || r == '-'
+	})
 
 	// Determine the maximum number of parts
 	maxLen := len(parts1)
