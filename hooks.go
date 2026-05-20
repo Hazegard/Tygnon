@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/rs/zerolog/log"
 	"os/exec"
 	"path/filepath"
@@ -15,10 +14,6 @@ func Hook(cfg Config, formula string) error {
 
 	hookFile := filepath.Join(cfg.HooksFolder, formula)
 	hookFile = strings.ReplaceAll(hookFile, ".rb", ".sh")
-	fmt.Println(hookFile)
-	fmt.Println(hookFile)
-	fmt.Println(hookFile)
-	fmt.Println(hookFile)
 	if !fileExists(hookFile) {
 		return nil
 	}
