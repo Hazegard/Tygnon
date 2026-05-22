@@ -174,14 +174,20 @@ func main() {
 
 	git := NewGit(config)
 
-	l.Info().Str("Path", config.Path).Msg("Running git -p")
+	gitDir, err := GetContainingDir(config.Path)
+	if err != nil {
+		l.Error().Stack().Err(err).Msg("error getting directory")
+		return
+	}
+
+	l.Info().Str("Path", gitDir).Msg("Running git -p")
 	err = git.Add(config)
 	if err != nil {
 		l.Error().Stack().Err(err).Msg("error adding files to staged commit")
 		return
 	}
 
-	l.Info().Str("Path", config.Path).Msg("Commiting files")
+	l.Info().Str("Path", gitDir).Msg("Commiting files")
 	err = git.CommitFiles()
 	if err != nil {
 		l.Error().Stack().Err(err).Msg("error committing files")
@@ -189,7 +195,7 @@ func main() {
 	}
 
 	if !config.NoPush {
-		l.Info().Str("Path", config.Path).Msg("Pushing...")
+		l.Info().Str("Path", gitDir).Msg("Pushing...")
 		err = git.Push()
 		if err != nil {
 			l.Error().Stack().Err(err).Msg("error pushing files")
@@ -197,5 +203,5 @@ func main() {
 		}
 	}
 
-	l.Info().Str("Path", config.Path).Msg("Done!")
+	l.Info().Str("Path", gitDir).Msg("Done!")
 }

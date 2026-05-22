@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -78,4 +79,32 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+// GetContainingDir returns the directory for the given path.
+// If path is already a directory, it returns path itself.
+// If path is a file, it returns the directory containing that file.
+func GetContainingDir(path string) (string, error) {
+	// First, get file info
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("could not stat path %q: %w", path, err)
+	}
+
+	if info.IsDir() {
+		// It's a directory: return as-is (but cleaned/absolute)
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return "", fmt.Errorf("could not make absolute path %q: %w", path, err)
+		}
+		return abs, nil
+	}
+
+	// It's a file: return its parent directory
+	dir := filepath.Dir(path)
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("could not make absolute path %q: %w", dir, err)
+	}
+	return abs, nil
 }
