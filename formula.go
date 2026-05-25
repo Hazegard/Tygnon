@@ -27,6 +27,7 @@ type FormulaInfo struct {
 	File        string
 	Description string
 	Instance    GitType
+	Directory   string
 }
 
 func (f *FormulaInfo) GetNewVersionURL(version string) string {
@@ -40,15 +41,16 @@ func (f *FormulaInfo) GetVersionURL() string {
 	return strings.ReplaceAll(f.URL, "#{version}", f.Version)
 }
 
-func (f *FormulaInfo) GetLocalFile(config Config) string {
-	return strings.TrimPrefix(f.File, config.Path)
+func (f *FormulaInfo) GetLocalFile() string {
+	return TrimDir(f.Directory, f.File)
 }
 
 // ParseFormula parses a Homebrew formula (as a string)
 // and extracts information such as URL, SHA256, version, etc.
-func ParseFormula(formulaPath string) (FormulaInfo, error) {
+func ParseFormula(formulaPath string, dir string) (FormulaInfo, error) {
 	info := FormulaInfo{
-		File: formulaPath,
+		File:      formulaPath,
+		Directory: dir,
 	}
 	formula, err := ReadFile(formulaPath)
 	if err != nil {

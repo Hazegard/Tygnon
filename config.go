@@ -17,7 +17,7 @@ type Config struct {
 	Tokens         map[string]string `name:"token" short:"T" help:"Personal access token" env:""`
 	Verbose        int               `name:"verbose" short:"v" optional:"true" help:"verbose output" type:"counter" default:"0" env:""`
 	Force          bool              `name:"force" short:"f" optional:"true" help:"force overwriting formulas" env:""`
-	Path           string            `arg:"" optional:"" help:"path to project directory" default:"."`
+	Path           []string          `arg:"" optional:"" help:"path to project directory" default:"."`
 	Interactive    bool              `name:"interactive" negatable:"" short:"i" help:"interactive mode" default:"true"`
 	NoPush         bool              `name:"no-push" help:"disable git push" default:"false"`
 	GenerateConfig bool              `name:"generate-config" help:"generate config file" default:"false"`
@@ -74,14 +74,10 @@ func GenerateYAMLWithComments(cfg any) (string, error) {
 	}
 
 	nameHelpMap := make(map[string]string)
-	// v := reflect.ValueOf(cfg)
 	t := reflect.TypeOf(cfg)
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		// value := v.Field(i)
-		// fmt.Println(field)
-		// fmt.Println(value)
 		// Get the "name" tag.
 		help := field.Tag.Get("help")
 		if help == "" {
@@ -93,7 +89,6 @@ func GenerateYAMLWithComments(cfg any) (string, error) {
 		}
 		nameHelpMap[name] = help
 	}
-	// node.Content[0].Content[i].HeadComment = tag
 
 	for i, n := range node.Content[0].Content {
 		v := n.Value

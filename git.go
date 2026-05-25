@@ -10,15 +10,19 @@ import (
 )
 
 type Git struct {
-	Config Config
+	Interactive bool
+	Path        string
 }
 
-func NewGit(config Config) *Git {
-	return &Git{Config: config}
+func NewGit(interactive bool, path string) *Git {
+	return &Git{
+		Interactive: interactive,
+		Path:        path,
+	}
 }
 
 func (g *Git) Add(config Config) error {
-	args := []string{"-C", g.Config.Path, "add"}
+	args := []string{"-C", g.Path, "add"}
 	if config.Interactive {
 		args = append(args, "-p")
 	} else {
@@ -36,7 +40,7 @@ func (g *Git) Add(config Config) error {
 }
 
 func (g *Git) GetCommitFiles() ([]string, error) {
-	cmd := exec.Command("git", "-C", g.Config.Path, "diff", "--cached", "--name-only")
+	cmd := exec.Command("git", "-C", g.Path, "diff", "--cached", "--name-only")
 	out := bytes.NewBuffer(nil)
 	cmd.Stdout = out
 	err := cmd.Run()
@@ -60,7 +64,7 @@ func (g *Git) CommitFiles() error {
 	if err != nil {
 		return fmt.Errorf("get getting commit files: %w", err)
 	}
-	cmd := exec.Command("git", "-C", g.Config.Path, "commit", "-m", fmt.Sprintf("Bump %s", strings.Join(files, "/")))
+	cmd := exec.Command("git", "-C", g.Path, "commit", "-m", fmt.Sprintf("Bump %s", strings.Join(files, "/")))
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
@@ -70,7 +74,7 @@ func (g *Git) CommitFiles() error {
 }
 
 func (g *Git) Push() error {
-	cmd := exec.Command("git", "-C", g.Config.Path, "push")
+	cmd := exec.Command("git", "-C", g.Path, "push")
 	cmd.Stdout = os.Stdout
 	err := cmd.Run()
 	if err != nil {
@@ -99,4 +103,21 @@ func GetOwnerRepo(u string) (string, string, error) {
 	owner := parts[0]
 	repo := parts[1]
 	return owner, repo, nil
+}
+
+// IsInsideGitWorkTree returns true if dir is inside a Git working tree.
+// It shells out to `git rev-parse --is-inside-work-tree`.
+func IsInsideGitWorkTree(dir string) (bool, error) {
+	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
+	cmd.Dir = dir
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	if err := cmd.Run(); err != nil {
+		// Any non-zero exit means “not a git repo” or Git not installed
+		return false, nil
+	}
+	result := strings.TrimSpace(out.String())
+	return result == "true", nil
 }

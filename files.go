@@ -106,5 +106,9 @@ func GetContainingDir(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not make absolute path %q: %w", dir, err)
 	}
-	return abs, nil
+	return abs + string(filepath.Separator), nil
+}
+
+func TrimDir(dir string, path string) string {
+	return strings.TrimPrefix(strings.TrimPrefix(path, dir), string(filepath.Separator))
 }
