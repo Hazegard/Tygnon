@@ -30,13 +30,15 @@ func main() {
 	}
 
 	for _, path := range config.Path {
-		HandlePath(path, config, l)
-		err = HandleGit(config, path, l)
+		hasUpdate := HandlePath(path, config, l)
+		if hasUpdate {
+			err = HandleGit(config, path, l)
+		}
 	}
 
 }
 
-func HandlePath(path string, config Config, l zerolog.Logger) {
+func HandlePath(path string, config Config, l zerolog.Logger) bool {
 	absPath, err := filepath.Abs(path)
 	if err == nil {
 		path = absPath
@@ -45,13 +47,13 @@ func HandlePath(path string, config Config, l zerolog.Logger) {
 	dir, err := GetContainingDir(path)
 	if err != nil {
 		l.Error().Stack().Err(err).Msg("error getting directory")
-		return
+		return false
 	}
 
 	formulaFileNames, err := FindBrewFormulaFiles(path)
 	if err != nil {
 		l.Error().Stack().Err(err).Msg("error finding brew formula files")
-		return
+		return false
 	}
 
 	var formulas []FormulaInfo
@@ -65,7 +67,7 @@ func HandlePath(path string, config Config, l zerolog.Logger) {
 	}
 	if len(formulas) == 0 {
 		l.Warn().Str("Path", path).Msg("no formula files found, aborting")
-		return
+		return false
 	}
 
 	var updatedFormulas []string
@@ -82,7 +84,7 @@ func HandlePath(path string, config Config, l zerolog.Logger) {
 
 	if len(updatedFormulas) == 0 {
 		l.Info().Str("Path", path).Msg("No new versions found")
-		return
+		return false
 	}
 	l.Warn().Str("Path", path).Msg("Updated formula files:")
 
@@ -97,6 +99,7 @@ func HandlePath(path string, config Config, l zerolog.Logger) {
 			_ = Hook(config, updatedFormula)
 		}
 	}
+	return len(updatedFormulas) > 0
 }
 
 func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error, FormulaInfo) {
