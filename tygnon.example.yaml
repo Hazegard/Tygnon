@@ -19,3 +19,20 @@ token:
 # verbose output
 verbose: 0
 
+hooks:
+  - name: Test
+    path: Path
+    parameters:
+      - param1
+      - param2
+    formulas:
+      - Formula1
+      - Formula2
+  - name: Test2
+    path: Path2
+    parameters:
+      - param1
+      - param2
+    formulas:
+      - Formula1
+      - Formula2

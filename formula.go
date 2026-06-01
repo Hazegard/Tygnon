@@ -45,6 +45,10 @@ func (f *FormulaInfo) GetLocalFile() string {
 	return TrimDir(f.Directory, f.File)
 }
 
+func (f *FormulaInfo) GetName() string {
+	return strings.TrimSuffix(f.GetLocalFile(), ".rb")
+}
+
 // ParseFormula parses a Homebrew formula (as a string)
 // and extracts information such as URL, SHA256, version, etc.
 func ParseFormula(formulaPath string, dir string) (FormulaInfo, error) {

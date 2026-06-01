@@ -21,7 +21,7 @@ type Config struct {
 	Interactive    bool              `name:"interactive" negatable:"" short:"i" help:"interactive mode" default:"true"`
 	NoPush         bool              `name:"no-push" help:"disable git push" default:"false"`
 	GenerateConfig bool              `name:"generate-config" help:"generate config file" default:"false"`
-	HooksFolder    string            `optional:"" help:"hooks folder" name:"hooks"`
+	Hooks          Hooks             `name:"hooks" help:"hooks" hidden:""`
 }
 
 func (c *Config) GenConfig() (string, error) {

@@ -70,7 +70,7 @@ func HandlePath(path string, config Config, l zerolog.Logger) bool {
 		return false
 	}
 
-	var updatedFormulas []string
+	var updatedFormulas []FormulaInfo
 	for _, formula := range formulas {
 		err, formula := HandleFormula(formula, config, l)
 		if err != nil {
@@ -78,7 +78,7 @@ func HandlePath(path string, config Config, l zerolog.Logger) bool {
 			continue
 		}
 		if formula != (FormulaInfo{}) {
-			updatedFormulas = append(updatedFormulas, TrimDir(dir, formula.File))
+			updatedFormulas = append(updatedFormulas, formula)
 		}
 	}
 
@@ -89,14 +89,15 @@ func HandlePath(path string, config Config, l zerolog.Logger) bool {
 	l.Warn().Str("Path", path).Msg("Updated formula files:")
 
 	for _, updatedFormula := range updatedFormulas {
-		l.Warn().Msgf("  - %s", updatedFormula)
+		l.Warn().Msgf("  - %s", TrimDir(dir, updatedFormula.File))
 	}
 
-	if config.HooksFolder != "" {
-		l.Info().Str("Folder", config.HooksFolder).Msg("Executing hooks")
+	if config.Hooks != nil {
+		l.Info().Msg("Executing hooks")
 
 		for _, updatedFormula := range updatedFormulas {
-			_ = Hook(config, updatedFormula)
+			config.Hooks.ApplyHook(updatedFormula, config, l)
+			// _ = HookFunc(config, updatedFormula)
 		}
 	}
 	return len(updatedFormulas) > 0
