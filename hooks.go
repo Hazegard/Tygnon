@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strings"
 )
 
 type Hook struct {
@@ -16,7 +17,19 @@ type Hook struct {
 }
 
 func (h *Hook) ApplyHook(f FormulaInfo, hookName string, c Config, l zerolog.Logger) error {
-	params := append([]string{f.File}, h.Parameters...)
+	version := ""
+	isOnMaster, err := f.IsOnMaster()
+	if isOnMaster && err == nil {
+		v := strings.Split(f.Version, ".")
+		if len(v) < 2 {
+			version = f.Version
+		} else {
+			version = v[1]
+		}
+	} else {
+		version = f.Version
+	}
+	params := append([]string{f.File, version}, h.Parameters...)
 	l.Info().Str("Formula", f.File).Str("Hook", hookName).Msg("Applying hook")
 	l.Trace().Strs("Parameters", params).Msg("Parameters")
 

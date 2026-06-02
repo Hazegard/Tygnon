@@ -96,6 +96,7 @@ func HandlePath(path string, config Config, l zerolog.Logger) bool {
 		l.Info().Msg("Executing hooks")
 
 		for _, updatedFormula := range updatedFormulas {
+			l.Debug().Msgf("  - %s", TrimDir(dir, updatedFormula.File))
 			config.Hooks.ApplyHook(updatedFormula, config, l)
 			// _ = HookFunc(config, updatedFormula)
 		}
