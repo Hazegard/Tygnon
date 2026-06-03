@@ -128,7 +128,7 @@ func (gapi *GitlabApi) GetMasterVersionId(projectUrl string) (string, error) {
 	return fmt.Sprintf("%d.%s", count, ID), nil
 }
 
-func (gapi *GitlabApi) GetLatestVersion(homepage string, onMaster bool) (string, error) {
+func (gapi *GitlabApi) GetLatestVersion(homepage string) (string, error) {
 	release, err := gapi.GetLatestReleaseId(homepage)
 	if err != nil {
 		release = "0"
@@ -138,10 +138,7 @@ func (gapi *GitlabApi) GetLatestVersion(homepage string, onMaster bool) (string,
 	if err != nil {
 		tag = "0"
 	}
-	cmp, err := CompareVersions(release, tag, onMaster)
-	if err != nil {
-		return "", fmt.Errorf("error getting versions: %w", err)
-	}
+	cmp := CompareVersions(release, tag)
 	if cmp > 0 {
 		return release, nil
 	}

@@ -139,7 +139,7 @@ func (api *GiteaApi) GetMasterVersionId(projectUrl string) (string, error) {
 	return fmt.Sprintf("%d.%s", commitCount, shortCommit), nil
 }
 
-func (api *GiteaApi) GetLatestVersion(projectUrl string, onMaster bool) (string, error) {
+func (api *GiteaApi) GetLatestVersion(projectUrl string) (string, error) {
 	release, err := api.GetLatestReleaseId(projectUrl)
 	if err != nil {
 		release = "0"
@@ -150,10 +150,7 @@ func (api *GiteaApi) GetLatestVersion(projectUrl string, onMaster bool) (string,
 		tag = "0"
 	}
 
-	cmp, err := CompareVersions(release, tag, onMaster)
-	if err != nil {
-		return "", fmt.Errorf("error comparing versions: %w", err)
-	}
+	cmp := CompareVersions(release, tag)
 
 	if cmp > 0 {
 		return release, nil

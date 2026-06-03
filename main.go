@@ -136,7 +136,7 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 	}
 
 	if !isMaster {
-		newVersion, err = gitClient.GetLatestVersion(formula.Homepage, isMaster)
+		newVersion, err = gitClient.GetLatestVersion(formula.Homepage)
 		if err != nil {
 			l.Warn().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Err(err).Msg("error getting new version")
 			return fmt.Errorf("error getting new version: %w", err), FormulaInfo{}
@@ -152,10 +152,7 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 		}
 	}
 	l.Debug().Str("New", newVersion).Str("Old", formula.Version).Str("Url", formula.Homepage).Msg("Comparing versions...")
-	c, err = CompareVersions(formula.Version, newVersion, isMaster)
-	if err != nil {
-		l.Warn().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Str("Current", formula.Version).Str("New", newVersion).Err(err).Msg("error comparing versions")
-	}
+	c = CompareVersions(formula.Version, newVersion)
 	if c == 0 {
 		if config.Force {
 			l.Trace().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Str("Version", formula.Version).Msg("No new version, but force option enabled, continuing...")

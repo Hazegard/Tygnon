@@ -20,13 +20,13 @@ func CompareVersionsSemver(current, _new string) (int, error) {
 	return currentVersion.Compare(newVersion), nil
 }
 
-func CompareVersions(current, _new string, onMaster bool) (int, error) {
-	// i, err := CompareVersionsSemver(current, _new)
-	// if err == nil && !(onMaster && i == 0) {
-	// 	return i, nil
-	// }
-	i := CompareVersionsBourrin(current, _new)
-	return i, nil
+func CompareVersions(current, _new string) int {
+	i, err := CompareVersionsSemver(current, _new)
+	if err == nil {
+		return i
+	}
+	i = CompareVersionsBourrin(current, _new)
+	return i
 }
 
 // CompareVersionsBourrin compares two version strings (e.g., "1.2.3" vs "1.2.4").

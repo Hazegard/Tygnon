@@ -62,6 +62,11 @@ func (gapi *GithubApi) GetLatestTagId(projectUrl string) (string, error) {
 		return "", fmt.Errorf("no tags found")
 	}
 	// Assuming the first tag in the list is the "latest" tag.
+	//
+	// sort.Slice(tags, func(i, j int) bool {
+	// 	result := CompareVersions(tags[i].GetName(), tags[j].GetName())
+	// 	return result > 0
+	// })
 	return tags[0].GetName(), nil
 }
 
@@ -134,7 +139,7 @@ func (gapi *GithubApi) GetMasterVersionId(projectUrl string) (string, error) {
 
 // GetLatestVersion first attempts to get the latest release tag name.
 // If no release is found, it falls back to getting the latest tag name.
-func (gapi *GithubApi) GetLatestVersion(homepage string, onMaster bool) (string, error) {
+func (gapi *GithubApi) GetLatestVersion(homepage string) (string, error) {
 	release, err := gapi.GetLatestReleaseId(homepage)
 	if err != nil {
 		release = "0"
@@ -144,10 +149,7 @@ func (gapi *GithubApi) GetLatestVersion(homepage string, onMaster bool) (string,
 	if err != nil {
 		tag = "0"
 	}
-	cmp, err := CompareVersions(release, tag, onMaster)
-	if err != nil {
-		return "", fmt.Errorf("error getting versions: %w", err)
-	}
+	cmp := CompareVersions(release, tag)
 	if cmp > 0 {
 		return release, nil
 	}
