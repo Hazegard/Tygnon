@@ -13,6 +13,12 @@ import (
 	"strings"
 )
 
+var (
+	Commit  = "none"
+	Date    = "2006-01-02T15:04:05Z"
+	Version = "dev"
+)
+
 type Config struct {
 	Tokens         map[string]string `name:"token" short:"T" help:"Personal access token" env:""`
 	Verbose        int               `name:"verbose" short:"v" optional:"true" help:"verbose output" type:"counter" default:"0" env:""`
@@ -22,11 +28,16 @@ type Config struct {
 	NoPush         bool              `name:"no-push" help:"disable git push" default:"false"`
 	GenerateConfig bool              `name:"generate-config" help:"generate config file" default:"false"`
 	Hooks          Hooks             `name:"hooks" help:"hooks" hidden:""`
+	Version        bool              `name:"version" help:"show version"`
 }
 
 func (c *Config) GenConfig() (string, error) {
 	c.GenerateConfig = false
 	return GenerateYAMLWithComments(*c)
+}
+
+func (c *Config) GetVersion() string {
+	return fmt.Sprintf("%s %s-%.8s (%s)", APPNAME, Version, Commit, Date)
 }
 
 func parseArgs() (Config, error) {

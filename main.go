@@ -16,6 +16,10 @@ func main() {
 		l.Error().Stack().Err(err).Msg("error parsing cli arguments")
 		return
 	}
+	if config.Version {
+		fmt.Println(config.GetVersion())
+		return
+	}
 	if config.GenerateConfig {
 		yamlConfig, err := config.GenConfig()
 		if err != nil {
