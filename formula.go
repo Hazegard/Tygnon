@@ -20,6 +20,7 @@ const (
 // FormulaInfo holds the parsed information from a Homebrew formula.
 type FormulaInfo struct {
 	URL         string
+	BottleURL   string
 	SHA256      string
 	Version     string
 	Homepage    string
@@ -27,7 +28,18 @@ type FormulaInfo struct {
 	File        string
 	Description string
 	Instance    GitType
+	Bottles     []Bottle
 	Directory   string
+}
+type Bottle struct {
+	Url     string
+	Sha256  string
+	Options string
+	target  string
+}
+
+func (b *Bottle) NewUrl(_ string, name string, version string) string {
+	return strings.ReplaceAll(fmt.Sprintf("%s/%s-%s.%s.bottle.tar.gz", b.Url, name, version, b.target), "#{version}", version)
 }
 
 func (f *FormulaInfo) GetNewVersionURL(version string) string {
@@ -49,6 +61,42 @@ func (f *FormulaInfo) GetName() string {
 	return strings.TrimSuffix(f.GetLocalFile(), ".rb")
 }
 
+func (f *FormulaInfo) ParseBottles(formula string) {
+	startBottleRe := regexp.MustCompile(`bottle\s+do`)
+	endBottleRe := regexp.MustCompile(`\s+end`)
+	bottleRe := regexp.MustCompile(`sha256(?P<options>\s+.*,)?\s+(?P<target>.*):\s+"(?P<sha256>[a-fA-F0-9]{64})"`)
+	inBottle := false
+	for _, line := range strings.Split(formula, "\n") {
+		if startBottleRe.MatchString(line) {
+			inBottle = true
+			continue
+		}
+		if endBottleRe.MatchString(line) {
+			inBottle = false
+		}
+		if inBottle && bottleRe.MatchString(line) {
+
+			match := bottleRe.FindStringSubmatch(line)
+			bottle := Bottle{}
+			for i, name := range bottleRe.SubexpNames() {
+				if i == 0 {
+					continue
+				}
+				if name == "target" {
+					bottle.target = match[i]
+				}
+				if name == "sha256" {
+					bottle.Sha256 = match[i]
+				}
+				if name == "options" {
+					bottle.Options = match[i]
+				}
+			}
+			f.Bottles = append(f.Bottles, bottle)
+		}
+	}
+}
+
 // ParseFormula parses a Homebrew formula (as a string)
 // and extracts information such as URL, SHA256, version, etc.
 func ParseFormula(formulaPath string, dir string) (FormulaInfo, error) {
@@ -67,10 +115,15 @@ func ParseFormula(formulaPath string, dir string) (FormulaInfo, error) {
 	versionRe := regexp.MustCompile(`version\s+"([^"]+)"`)
 	homepageRe := regexp.MustCompile(`homepage\s+"([^"]+)"`)
 	descRe := regexp.MustCompile(`desc\s+"([^"]+)"`)
+	bottleUrlRe := regexp.MustCompile(`root_url\s+"([^"]+)"`)
 
 	// Extract URL.
 	if match := urlRe.FindStringSubmatch(formula); len(match) > 1 {
 		info.URL = strings.TrimSpace(match[1])
+	}
+	// Extract bottle URL.
+	if match := bottleUrlRe.FindStringSubmatch(formula); len(match) > 1 {
+		info.BottleURL = strings.TrimSpace(match[1])
 	}
 
 	// Extract SHA256.
@@ -98,6 +151,11 @@ func ParseFormula(formulaPath string, dir string) (FormulaInfo, error) {
 	}
 	info.Instance = instance
 
+	info.ParseBottles(formula)
+	for i := range info.Bottles {
+		info.Bottles[i].Url = info.BottleURL
+	}
+
 	return info, nil
 }
 
@@ -122,6 +180,11 @@ func (f *FormulaInfo) Update() error {
 	reDescription := regexp.MustCompile(`(?m)^(\s*desc\s+")([^"]+)(".*)$`)
 	// Replace the current sha256 with the new sha256.
 	content = reDescription.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", f.Description))
+
+	for _, bottle := range f.Bottles {
+		reBottle := regexp.MustCompile(fmt.Sprintf("(sha256.*\\s+%s:.*\")[a-fA-F0-9]{64}\"", bottle.target))
+		content = reBottle.ReplaceAllString(content, fmt.Sprintf("${1}%s\"", bottle.Sha256))
+	}
 
 	return WriteFile(f.File, content)
 }

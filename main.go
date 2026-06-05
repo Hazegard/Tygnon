@@ -77,7 +77,7 @@ func HandlePath(path string, config Config, l zerolog.Logger) bool {
 			l.Err(err).Msg("error handling formula")
 			continue
 		}
-		if formula != (FormulaInfo{}) {
+		if formula.URL != "" {
 			updatedFormulas = append(updatedFormulas, formula)
 		}
 	}
@@ -183,10 +183,29 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 	formula.Version = newVersion
 	formula.SHA256 = newSha256
 	formula.Description = description
+
+	for i := range formula.Bottles {
+		newUrl := formula.Bottles[i].NewUrl(formula.BottleURL, formula.GetName(), formula.Version)
+
+		newReleaseArchive, err := gitClient.HttpGet(newUrl, config.Tokens[gitDomain])
+		if err != nil {
+			newUrl = formula.Bottles[i].NewUrl(formula.BottleURL, strings.ToLower(formula.GetName()), formula.Version)
+			newReleaseArchive, err = gitClient.HttpGet(newUrl, config.Tokens[gitDomain])
+
+			if err != nil {
+				l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("error downloading package")
+				continue
+			}
+		}
+		newSha256 := Sha256(newReleaseArchive)
+		formula.Bottles[i].Sha256 = newSha256
+	}
+
 	err = formula.Update()
 	if err != nil {
 		l.Warn().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Str("File", formula.File).Err(err).Msg("error updating formula")
 	}
+
 	return nil, formula
 }
 
