@@ -239,7 +239,7 @@ func (f *FormulaInfo) fingerPrintInstance() (GitType, error) {
 	return GitType(-1), fmt.Errorf("no corresponding git instance found: %s", u)
 }
 
-func (f *FormulaInfo) IsOnMaster() (bool, error) {
+func (f *FormulaInfo) IsFollowingBranch() (bool, error) {
 	u, err := url.Parse(f.URL)
 	if err != nil {
 		return false, fmt.Errorf("error parsing formula URL: %s", err)
@@ -252,12 +252,13 @@ func (f *FormulaInfo) IsOnMaster() (bool, error) {
 			return true, nil
 		}
 	case Gitlab:
-		re := regexp.MustCompile(`/archive/master/.*\.(zip|tar\.gz|tar|tar\.bz2)`)
+		re := regexp.MustCompile(`/archive/.*\.(zip|tar\.gz|tar|tar\.bz2)`)
 		if re.MatchString(u.Path) {
 			return true, nil
 		}
 	case Gitea:
-		if strings.HasSuffix(u.Path, "/archive/main.zip") {
+		re := regexp.MustCompile(`/archive/.*.zip`)
+		if re.MatchString(u.Path) {
 			return true, nil
 		}
 	}

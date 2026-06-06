@@ -96,7 +96,7 @@ func (gapi *GithubApi) GetLatestReleaseId(projectUrl string) (string, error) {
 	return release.GetName(), nil
 }
 
-func (gapi *GithubApi) GetMasterVersionId(projectUrl string) (string, error) {
+func (gapi *GithubApi) GetBranchVersionId(projectUrl string) (string, error) {
 	ctx := context.Background()
 	owner, repoName, err := GetOwnerRepo(projectUrl)
 	if err != nil {

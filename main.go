@@ -134,12 +134,12 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 	newUrl := ""
 	c := 0
 	newVersion := ""
-	isMaster, err := formula.IsOnMaster()
+	isFollowingBranch, err := formula.IsFollowingBranch()
 	if err != nil {
-		l.Error().Err(err).Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("error checking if new version is on-master")
+		l.Error().Err(err).Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("error checking if new version is following branch")
 	}
 
-	if !isMaster {
+	if !isFollowingBranch {
 		newVersion, err = gitClient.GetLatestVersion(formula.Homepage)
 		if err != nil {
 			l.Warn().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Err(err).Msg("error getting new version")
@@ -149,10 +149,10 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 		newUrl = formula.GetNewVersionURL(newVersion)
 	} else {
 		newUrl = formula.URL
-		newVersion, err = gitClient.GetMasterVersionId(formula.Homepage)
+		newVersion, err = gitClient.GetBranchVersionId(formula.Homepage)
 		if err != nil {
-			l.Error().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Stack().Err(err).Msg("error getting new version from master")
-			return fmt.Errorf("error getting new version from master: %w", err), FormulaInfo{}
+			l.Error().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Stack().Err(err).Msg("error getting new version from branch")
+			return fmt.Errorf("error getting new version from branch: %w", err), FormulaInfo{}
 		}
 	}
 	l.Debug().Str("New", newVersion).Str("Old", formula.Version).Str("Url", formula.Homepage).Msg("Comparing versions...")

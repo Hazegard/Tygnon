@@ -76,7 +76,7 @@ func (gapi *GitlabApi) GetLatestReleaseId(projectUrl string) (string, error) {
 	return release.TagName, nil
 }
 
-func (gapi *GitlabApi) GetMasterVersionId(projectUrl string) (string, error) {
+func (gapi *GitlabApi) GetBranchVersionId(projectUrl string) (string, error) {
 	projectPath, err := ExtractProjectPath(projectUrl)
 	if err != nil {
 		return "", fmt.Errorf("error extracting project path: %s", err)

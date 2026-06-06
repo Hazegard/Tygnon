@@ -18,8 +18,8 @@ type Hook struct {
 
 func (h *Hook) ApplyHook(f FormulaInfo, hookName string, c Config, l zerolog.Logger) error {
 	version := ""
-	isOnMaster, err := f.IsOnMaster()
-	if isOnMaster && err == nil {
+	isFollowingBranch, err := f.IsFollowingBranch()
+	if isFollowingBranch && err == nil {
 		v := strings.Split(f.Version, ".")
 		if len(v) < 2 {
 			version = f.Version

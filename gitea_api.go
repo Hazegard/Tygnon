@@ -74,7 +74,7 @@ func (api *GiteaApi) GetLatestReleaseId(projectUrl string) (string, error) {
 	return release.TagName, nil
 }
 
-func (api *GiteaApi) GetMasterVersionId(projectUrl string) (string, error) {
+func (api *GiteaApi) GetBranchVersionId(projectUrl string) (string, error) {
 	owner, repoName, err := GetOwnerRepo(projectUrl)
 	if err != nil {
 		return "", fmt.Errorf("error getting owner repo: %s", err)
