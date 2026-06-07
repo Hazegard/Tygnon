@@ -29,6 +29,7 @@ type Config struct {
 	GenerateConfig bool              `name:"generate-config" help:"generate config file" default:"false"`
 	Hooks          Hooks             `name:"hooks" help:"hooks" hidden:""`
 	Version        bool              `name:"version" help:"show version"`
+	KeepRevision   bool              `name:"keep-revision" help:"keep revision number" default:"false"`
 }
 
 func (c *Config) GenConfig() (string, error) {

@@ -30,6 +30,7 @@ type FormulaInfo struct {
 	Instance    GitType
 	Bottles     []Bottle
 	Directory   string
+	Revision    string
 }
 type Bottle struct {
 	Url     string
@@ -116,6 +117,7 @@ func ParseFormula(formulaPath string, dir string) (FormulaInfo, error) {
 	homepageRe := regexp.MustCompile(`homepage\s+"([^"]+)"`)
 	descRe := regexp.MustCompile(`desc\s+"([^"]+)"`)
 	bottleUrlRe := regexp.MustCompile(`root_url\s+"([^"]+)"`)
+	revisionRe := regexp.MustCompile(`revision\s+"([^"]+)"`)
 
 	// Extract URL.
 	if match := urlRe.FindStringSubmatch(formula); len(match) > 1 {
@@ -145,6 +147,12 @@ func ParseFormula(formulaPath string, dir string) (FormulaInfo, error) {
 	if match := descRe.FindStringSubmatch(formula); len(match) > 1 {
 		info.Description = strings.TrimSpace(match[1])
 	}
+
+	// Extract the revision.
+	if match := revisionRe.FindStringSubmatch(formula); len(match) > 1 {
+		info.Revision = strings.TrimSpace(match[1])
+	}
+
 	instance, err := info.gitInstance()
 	if err != nil {
 		return FormulaInfo{}, fmt.Errorf("error getting git instance: %s", err)
@@ -184,6 +192,15 @@ func (f *FormulaInfo) Update() error {
 	for _, bottle := range f.Bottles {
 		reBottle := regexp.MustCompile(fmt.Sprintf("(sha256.*\\s+%s:.*\")[a-fA-F0-9]{64}\"", bottle.target))
 		content = reBottle.ReplaceAllString(content, fmt.Sprintf("${1}%s\"", bottle.Sha256))
+	}
+
+	// Regular expression to match the revision line.
+	reRevision := regexp.MustCompile(`(?m)^(\s*revision\s+")([^"]+)(".*)$`)
+	// Replace the current sha256 with the new sha256.
+	if f.Revision != "" {
+		content = reRevision.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", f.Revision))
+	} else {
+		content = reRevision.ReplaceAllString(content, "")
 	}
 
 	return WriteFile(f.File, content)

@@ -205,6 +205,10 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 		formula.Bottles[i].Sha256 = newSha256
 	}
 
+	if !config.KeepRevision {
+		formula.Revision = ""
+	}
+
 	err = formula.Update()
 	if err != nil {
 		l.Warn().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Str("File", formula.File).Err(err).Msg("error updating formula")
