@@ -119,7 +119,7 @@ func (gapi *GitlabApi) GetBranchVersionId(projectUrl string) (string, error) {
 		count += len(commits)
 
 		// If there are no more pages, break out of the loop.
-		if resp.CurrentPage >= resp.TotalPages {
+		if resp.NextPage <= 0 {
 			break
 		}
 		opts.Page = resp.NextPage
