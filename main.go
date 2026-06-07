@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/rs/zerolog"
 	"path/filepath"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 const APPNAME = "tygnon"

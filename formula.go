@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -225,35 +223,8 @@ func (f *FormulaInfo) gitInstance() (GitType, error) {
 	case "gitlab.com":
 		return Gitlab, nil
 	default:
-		return f.fingerPrintInstance()
+		return fingerprinter.fingerPrintInstance(u)
 	}
-}
-
-func (f *FormulaInfo) fingerPrintInstance() (GitType, error) {
-	u, err := f.GetInstance()
-	if err != nil {
-		return GitType(-1), nil
-	}
-	res, err := http.Get(fmt.Sprintf("https://%s", u))
-	if err != nil {
-		return GitType(-1), fmt.Errorf("error fetching fingerPrint instance: %s", err)
-	}
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return GitType(-1), fmt.Errorf("error reading fingerPrint response: %s", err)
-	}
-
-	if strings.Contains(string(body), "<a href=\"https://about.gitlab.com\">About GitLab</a>") {
-		return Gitlab, nil
-	}
-	if strings.Contains(strings.ToLower(string(body)), "gitea") || strings.Contains(strings.ToLower(string(body)), "forgejo") {
-		return Gitea, nil
-	}
-	if strings.Contains(string(body), "<link rel=\"dns-prefetch\" href=\"https://github.githubassets.com\">") {
-		return Github, nil
-	}
-	return GitType(-1), fmt.Errorf("no corresponding git instance found: %s", u)
 }
 
 func (f *FormulaInfo) IsFollowingBranch() (bool, error) {
