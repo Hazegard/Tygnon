@@ -146,6 +146,10 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 			l.Warn().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Err(err).Msg("error getting new version")
 			return fmt.Errorf("error getting new version: %w", err), FormulaInfo{}
 		}
+		v, ok := ExtractVersion(newVersion)
+		if ok {
+			newVersion = v
+		}
 		newVersion = strings.TrimPrefix(newVersion, "v")
 		newUrl = formula.GetNewVersionURL(newVersion)
 	} else {

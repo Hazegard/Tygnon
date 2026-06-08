@@ -6,8 +6,11 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 )
+
+var versionRe = regexp.MustCompile(`(?i)\bv?(\d+(?:\.\d+){1,})\b`)
 
 type Git struct {
 	Interactive bool
@@ -120,4 +123,12 @@ func IsInsideGitWorkTree(dir string) (bool, error) {
 	}
 	result := strings.TrimSpace(out.String())
 	return result == "true", nil
+}
+
+func ExtractVersion(s string) (string, bool) {
+	m := versionRe.FindStringSubmatch(s)
+	if m == nil {
+		return "", false
+	}
+	return strings.ToLower(m[1]), true // captured version without the leading v/V
 }
