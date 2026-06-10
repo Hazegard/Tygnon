@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var versionRe = regexp.MustCompile(`(?i)\bv?(\d+(?:\.\d+){1,})\b`)
+var versionRe = regexp.MustCompile(`(?i)\bv?(\d+(?:\.\d+){1,}(-.*)?)\b`)
 
 type Git struct {
 	Interactive bool

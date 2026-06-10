@@ -7,7 +7,13 @@ import (
 	"strings"
 )
 
-var fingerprinter = new(Fingerprinter)
+func NewFingerPrinter() Fingerprinter {
+	fg := new(Fingerprinter)
+	fg.fg = make(map[string]GitType)
+	return *fg
+}
+
+var fingerprinter = NewFingerPrinter()
 
 type Fingerprinter struct {
 	fg map[string]GitType
