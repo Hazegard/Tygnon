@@ -115,7 +115,8 @@ func ParseFormula(formulaPath string, dir string) (FormulaInfo, error) {
 	homepageRe := regexp.MustCompile(`homepage\s+"([^"]+)"`)
 	descRe := regexp.MustCompile(`desc\s+"([^"]+)"`)
 	bottleUrlRe := regexp.MustCompile(`root_url\s+"([^"]+)"`)
-	revisionRe := regexp.MustCompile(`revision\s+"([^"]+)"`)
+	// revision is a bare integer (e.g. `revision 2`), not quoted.
+	revisionRe := regexp.MustCompile(`(?m)^\s*revision\s+(\d+)\s*$`)
 
 	// Extract URL.
 	if match := urlRe.FindStringSubmatch(formula); len(match) > 1 {
@@ -217,13 +218,13 @@ func (f *FormulaInfo) Update() error {
 		content = reBottle.ReplaceAllString(content, fmt.Sprintf("${1}%s\"", bottle.Sha256))
 	}
 
-	// Regular expression to match the revision line.
-	reRevision := regexp.MustCompile(`(?m)^(\s*revision\s+")([^"]+)(".*)$`)
-	// Replace the current sha256 with the new sha256.
+	// revision is a bare integer, so set it in place or drop the whole line.
+	reRevisionSet := regexp.MustCompile(`(?m)^(\s*revision\s+)\d+(\s*)$`)
+	reRevisionLine := regexp.MustCompile(`(?m)^\s*revision\s+\d+\s*\r?\n`)
 	if f.Revision != "" {
-		content = reRevision.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", f.Revision))
+		content = reRevisionSet.ReplaceAllString(content, fmt.Sprintf("${1}%s${2}", f.Revision))
 	} else {
-		content = reRevision.ReplaceAllString(content, "")
+		content = reRevisionLine.ReplaceAllString(content, "")
 	}
 
 	return WriteFile(f.File, content)
