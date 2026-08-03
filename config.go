@@ -34,7 +34,26 @@ type Config struct {
 
 func (c *Config) GenConfig() (string, error) {
 	c.GenerateConfig = false
-	return GenerateYAMLWithComments(*c)
+	redacted := *c
+	redacted.Tokens = redactTokens(c.Tokens)
+	return GenerateYAMLWithComments(redacted)
+}
+
+// redactTokens hides real tokens for printing (they may already be loaded from
+// env/config), falling back to example placeholders when none are set.
+func redactTokens(tokens map[string]string) map[string]string {
+	if len(tokens) == 0 {
+		return map[string]string{
+			"gitlab.com":      "GL_PERSONAL_ACCESS_TOKEN",
+			"github.com":      "GH_PERSONAL_ACCESS_TOKEN",
+			"git.example.com": "GL_EXAMPLE_PERSONAL_ACCESS_TOKEN",
+		}
+	}
+	redacted := make(map[string]string, len(tokens))
+	for host := range tokens {
+		redacted[host] = "REDACTED"
+	}
+	return redacted
 }
 
 func (c *Config) GetVersion() string {
