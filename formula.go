@@ -165,6 +165,31 @@ func ParseFormula(formulaPath string, dir string) (FormulaInfo, error) {
 	return info, nil
 }
 
+// rubyStringEscaper escapes a value (desc/version come from the remote host)
+// for a double-quoted Ruby string so it can't break out or interpolate.
+// Only `#{`, `#@`, `#$` start interpolation, so a bare `#` is left alone.
+var rubyStringEscaper = strings.NewReplacer(
+	`\`, `\\`,
+	`"`, `\"`,
+	"#{", `\#{`,
+	"#@", `\#@`,
+	"#$", `\#$`,
+	"\n", `\n`,
+	"\r", `\r`,
+)
+
+func escapeRubyString(s string) string {
+	return rubyStringEscaper.Replace(s)
+}
+
+// escapeReplacement escapes a literal value for use inside a
+// regexp.ReplaceAllString replacement, where an unescaped `$` would be treated
+// as a capture-group reference. Untrusted values (version/desc) may contain `$`
+// (e.g. a `$5` in a description), which would otherwise be silently dropped.
+func escapeReplacement(s string) string {
+	return strings.ReplaceAll(s, `$`, `$$`)
+}
+
 // Update updates the given Homebrew formula string with new version and sha256 values.
 // It returns the updated formula as a string.
 func (f *FormulaInfo) Update() error {
@@ -175,17 +200,17 @@ func (f *FormulaInfo) Update() error {
 
 	reVersion := regexp.MustCompile(`(?m)^(\s*version\s+")([^"]+)(".*)$`)
 	// Replace the current version with the new version.
-	content = reVersion.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", f.Version))
+	content = reVersion.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", escapeReplacement(escapeRubyString(f.Version))))
 
 	// Regular expression to match the sha256 line.
 	reSHA256 := regexp.MustCompile(`(?m)^(\s*sha256\s+")([^"]+)(".*)$`)
 	// Replace the current sha256 with the new sha256.
 	content = reSHA256.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", f.SHA256))
 
-	// Regular expression to match the sha256 line.
+	// Regular expression to match the desc line.
 	reDescription := regexp.MustCompile(`(?m)^(\s*desc\s+")([^"]+)(".*)$`)
-	// Replace the current sha256 with the new sha256.
-	content = reDescription.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", f.Description))
+	// Replace the current description with the new description.
+	content = reDescription.ReplaceAllString(content, fmt.Sprintf("${1}%s${3}", escapeReplacement(escapeRubyString(f.Description))))
 
 	for _, bottle := range f.Bottles {
 		reBottle := regexp.MustCompile(fmt.Sprintf("(sha256.*\\s+%s:.*\")[a-fA-F0-9]{64}\"", bottle.target))

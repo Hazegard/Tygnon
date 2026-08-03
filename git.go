@@ -10,7 +10,9 @@ import (
 	"strings"
 )
 
-var versionRe = regexp.MustCompile(`(?i)\bv?(\d+(?:\.\d+){1,}(-.*)?)\b`)
+// The prerelease suffix is limited to identifier chars so a free-text release
+// title (e.g. "2.5.0 - bug fixes") doesn't get swallowed into the version.
+var versionRe = regexp.MustCompile(`(?i)\bv?(\d+(?:\.\d+){1,}(?:-[a-z0-9.-]+)?)\b`)
 
 type Git struct {
 	Interactive bool
