@@ -16,7 +16,7 @@ type GiteaApi struct {
 
 func NewGiteaApi(token string, url string) (*GiteaApi, error) {
 
-	client, err := gitea.NewClient(url, gitea.SetToken(token))
+	client, err := gitea.NewClient(url, gitea.SetToken(token), gitea.SetHTTPClient(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("error creating gitea client: %s", err)
 	}
@@ -166,7 +166,7 @@ func (api *GiteaApi) HttpGet(assetUrl string, token string) ([]byte, error) {
 	if token != "" {
 		req.Header.Set("Authorization", "token "+token)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed to download asset: %w", err)
 	}
@@ -175,7 +175,7 @@ func (api *GiteaApi) HttpGet(assetUrl string, token string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return []byte{}, fmt.Errorf("failed to download asset, status: %s", resp.Status)
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxAssetBodySize))
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed to download asset: %w", err)
 	}

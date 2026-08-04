@@ -19,7 +19,7 @@ type GithubApi struct {
 // NewGithubApi creates a new GitHub client using the provided token and base URL.
 // If a non-default URL is provided, it attempts to create an Enterprise client.
 func NewGithubApi(token string) *GithubApi {
-	client := github.NewClient(nil)
+	client := github.NewClient(httpClient)
 	if token != "" {
 		client = client.WithAuthToken(token)
 	}
@@ -163,7 +163,7 @@ func (gapi *GithubApi) HttpGet(assetUrl string, token string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download asset: %w", err)
 	}
@@ -172,7 +172,7 @@ func (gapi *GithubApi) HttpGet(assetUrl string, token string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to download asset, status: %s", resp.Status)
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxAssetBodySize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}

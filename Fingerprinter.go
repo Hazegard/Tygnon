@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"strings"
 )
 
@@ -24,13 +23,13 @@ func (f *Fingerprinter) fingerPrintInstance(url string) (GitType, error) {
 	if v, ok := f.fg[url]; ok {
 		return v, nil
 	}
-	res, err := http.Get(fmt.Sprintf("https://%s", url))
+	res, err := httpClient.Get(fmt.Sprintf("https://%s", url))
 	if err != nil {
 		f.fg[url] = GitType(-1)
 		return GitType(-1), fmt.Errorf("error fetching fingerPrint instance: %s", err)
 	}
 	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
+	body, err := io.ReadAll(io.LimitReader(res.Body, maxFingerprintBodySize))
 	if err != nil {
 		f.fg[url] = GitType(-1)
 		return GitType(-1), fmt.Errorf("error reading fingerPrint response: %s", err)

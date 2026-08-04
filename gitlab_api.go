@@ -16,7 +16,7 @@ type GitlabApi struct {
 }
 
 func NewGitlabApi(token string, url string) (*GitlabApi, error) {
-	client, err := gitlab.NewClient(token, gitlab.WithBaseURL(url))
+	client, err := gitlab.NewClient(token, gitlab.WithBaseURL(url), gitlab.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("error creating gitlab client: %s", err)
 	}
@@ -154,7 +154,7 @@ func (gapi *GitlabApi) HttpGet(assetUrl string, token string) ([]byte, error) {
 		req.Header.Set("PRIVATE-TOKEN", token)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed to download asset: %w", err)
 	}
@@ -164,7 +164,7 @@ func (gapi *GitlabApi) HttpGet(assetUrl string, token string) ([]byte, error) {
 		return []byte{}, fmt.Errorf("failed to download asset, status: %s", resp.Status)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxAssetBodySize))
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed to download asset: %w", err)
 
