@@ -140,17 +140,18 @@ func (gapi *GithubApi) GetBranchVersionId(projectUrl string) (string, error) {
 // GetLatestVersion first attempts to get the latest release tag name.
 // If no release is found, it falls back to getting the latest tag name.
 func (gapi *GithubApi) GetLatestVersion(homepage string) (string, error) {
-	release, err := gapi.GetLatestReleaseId(homepage)
-	if err != nil {
-		release = "0"
+	release, releaseErr := gapi.GetLatestReleaseId(homepage)
+	tag, tagErr := gapi.GetLatestTagId(homepage)
+	if releaseErr != nil && tagErr != nil {
+		return "", fmt.Errorf("no release or tag found: release: %w, tag: %w", releaseErr, tagErr)
 	}
-
-	tag, err := gapi.GetLatestTagId(homepage)
-	if err != nil {
-		tag = "0"
+	if releaseErr != nil {
+		return tag, nil
 	}
-	cmp := CompareVersions(release, tag)
-	if cmp > 0 {
+	if tagErr != nil {
+		return release, nil
+	}
+	if CompareVersions(release, tag) > 0 {
 		return release, nil
 	}
 	return tag, nil

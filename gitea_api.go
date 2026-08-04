@@ -140,19 +140,18 @@ func (api *GiteaApi) GetBranchVersionId(projectUrl string) (string, error) {
 }
 
 func (api *GiteaApi) GetLatestVersion(projectUrl string) (string, error) {
-	release, err := api.GetLatestReleaseId(projectUrl)
-	if err != nil {
-		release = "0"
+	release, releaseErr := api.GetLatestReleaseId(projectUrl)
+	tag, tagErr := api.GetLatestTagId(projectUrl)
+	if releaseErr != nil && tagErr != nil {
+		return "", fmt.Errorf("no release or tag found: release: %w, tag: %w", releaseErr, tagErr)
 	}
-
-	tag, err := api.GetLatestTagId(projectUrl)
-	if err != nil {
-		tag = "0"
+	if releaseErr != nil {
+		return tag, nil
 	}
-
-	cmp := CompareVersions(release, tag)
-
-	if cmp > 0 {
+	if tagErr != nil {
+		return release, nil
+	}
+	if CompareVersions(release, tag) > 0 {
 		return release, nil
 	}
 	return tag, nil
