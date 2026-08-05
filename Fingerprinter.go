@@ -23,7 +23,7 @@ func (f *Fingerprinter) fingerPrintInstance(url string) (GitType, error) {
 	if v, ok := f.fg[url]; ok {
 		return v, nil
 	}
-	res, err := httpClient.Get(fmt.Sprintf("https://%s", url))
+	res, err := apiClient.Get(fmt.Sprintf("https://%s", url))
 	if err != nil {
 		f.fg[url] = GitType(-1)
 		return GitType(-1), fmt.Errorf("error fetching fingerPrint instance: %s", err)

@@ -1,19 +1,40 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"time"
 )
 
-// httpTimeout bounds every outbound request tygnon makes (fingerprinting,
-// release/tag lookups, asset downloads). Without it, a slow or malicious
-// remote host can hang the whole run indefinitely.
-const httpTimeout = 30 * time.Second
+// apiTimeout bounds lightweight API/metadata requests (tags, releases, commits, fingerprinting).
+const apiTimeout = 30 * time.Second
 
-// httpClient is shared by every git-hosting API client and the fingerprinter
-// so all outbound requests are subject to the same timeout.
-var httpClient = &http.Client{
-	Timeout: httpTimeout,
+// apiClient is used for API/metadata requests by every client and the fingerprinter.
+var apiClient = &http.Client{
+	Timeout: apiTimeout,
+}
+
+// Timeouts for asset downloads. The overall timeout bounds the whole request
+// (body included), the others just connection setup and the wait for headers.
+const (
+	assetDialTimeout    = 10 * time.Second
+	assetHeaderTimeout  = 30 * time.Second
+	assetOverallTimeout = 10 * time.Minute
+)
+
+// assetClient downloads release/bottle archives, which can be large, so it
+// avoids http.Client.Timeout (which would bound the body read too).
+var assetClient = &http.Client{
+	Transport: &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: assetDialTimeout,
+		}).DialContext,
+		TLSHandshakeTimeout:   assetDialTimeout,
+		ResponseHeaderTimeout: assetHeaderTimeout,
+	},
 }
 
 // Only read the head of a homepage when fingerprinting the git instance.
@@ -21,3 +42,28 @@ const maxFingerprintBodySize = 1 << 20 // 1 MiB
 
 // Cap the buffered asset size to bound memory usage.
 const maxAssetBodySize = 2 << 30 // 2 GiB
+
+func downloadAsset(req *http.Request) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(req.Context(), assetOverallTimeout)
+	defer cancel()
+	req = req.WithContext(ctx)
+
+	resp, err := assetClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download asset: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to download asset, status: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxAssetBodySize+1))
+	if err != nil {
+		return nil, fmt.Errorf("failed to download asset: %w", err)
+	}
+	if len(body) > maxAssetBodySize {
+		return nil, fmt.Errorf("asset exceeds maximum allowed size of %d bytes", maxAssetBodySize)
+	}
+	return body, nil
+}
