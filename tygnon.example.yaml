@@ -10,6 +10,9 @@ interactive: true
 # disable git push
 no-push: false
 
+# run configured hooks after updating formulas
+run-hooks: false
+
 # Personal access token
 token:
   gitlab.com: GL_PERSONAL_ACCESS_TOKEN

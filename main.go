@@ -98,12 +98,15 @@ func HandlePath(path string, config Config, l zerolog.Logger) bool {
 	}
 
 	if config.Hooks != nil {
-		l.Info().Msg("Executing hooks")
+		if !config.RunHooks {
+			l.Info().Msg("Hooks configured but --run-hooks not set, skipping")
+		} else {
+			l.Info().Msg("Executing hooks")
 
-		for _, updatedFormula := range updatedFormulas {
-			l.Debug().Msgf("  - %s", TrimDir(dir, updatedFormula.File))
-			config.Hooks.ApplyHook(updatedFormula, config, l)
-			// _ = HookFunc(config, updatedFormula)
+			for _, updatedFormula := range updatedFormulas {
+				l.Debug().Msgf("  - %s", TrimDir(dir, updatedFormula.File))
+				config.Hooks.ApplyHook(updatedFormula, config, l)
+			}
 		}
 	}
 	return len(updatedFormulas) > 0

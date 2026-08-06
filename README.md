@@ -27,6 +27,7 @@ Flags:
 -i, --[no-]interactive       interactive mode ($TYGNON_INTERACTIVE)
 --no-push                disable git push ($TYGNON_NO_PUSH)
 --generate-config        generate config file ($TYGNON_GENERATE_CONFIG)
+--run-hooks              run configured hooks after updating formulas ($TYGNON_RUN_HOOKS)
 ```
 
 ## Configuration file
@@ -99,3 +100,5 @@ hooks:
 
 
 > Note: hooks are executed in the order they are defined in the configuration file
+
+> Note: configuring hooks is not enough to run them - pass `--run-hooks` (or set `run-hooks: true` in the config file) to actually execute them. This is opt-in because hooks run arbitrary scripts, and `tygnon` may load a configuration file automatically from the current directory.

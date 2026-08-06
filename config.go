@@ -30,6 +30,7 @@ type Config struct {
 	Hooks          Hooks             `name:"hooks" help:"hooks" hidden:""`
 	Version        bool              `name:"version" help:"show version"`
 	KeepRevision   bool              `name:"keep-revision" help:"keep revision number" default:"false"`
+	RunHooks       bool              `name:"run-hooks" help:"run configured hooks after updating formulas" default:"false" env:""`
 }
 
 func (c *Config) GenConfig() (string, error) {
