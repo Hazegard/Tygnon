@@ -123,7 +123,7 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 	case Gitlab:
 		gitClient, err = NewGitlabApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 	case Github:
-		gitClient = NewGithubApi(config.Tokens[gitDomain])
+		gitClient, err = NewGithubApi(config.Tokens[gitDomain], gitDomain)
 	case Gitea:
 		gitClient, err = NewGiteaApi(config.Tokens[gitDomain], fmt.Sprintf("https://%s", gitDomain))
 	default:

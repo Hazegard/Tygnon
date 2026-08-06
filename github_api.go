@@ -15,19 +15,30 @@ type GithubApi struct {
 	client *github.Client
 }
 
-// NewGithubApi creates a new GitHub client using the provided token and base URL.
-// If a non-default URL is provided, it attempts to create an Enterprise client.
-func NewGithubApi(token string) *GithubApi {
+// NewGithubApi creates a GitHub client for host, using the public API for
+// github.com and a GitHub Enterprise client for anything else.
+func NewGithubApi(token string, host string) (*GithubApi, error) {
 	client := github.NewClient(apiClient)
+	baseURL := "https://api.github.com/"
+
+	if host != "" && host != "github.com" {
+		enterpriseURL := fmt.Sprintf("https://%s/", host)
+		var err error
+		client, err = client.WithEnterpriseURLs(enterpriseURL, enterpriseURL)
+		if err != nil {
+			return nil, fmt.Errorf("error creating github enterprise client for %s: %w", host, err)
+		}
+		baseURL = client.BaseURL.String()
+	}
+
 	if token != "" {
 		client = client.WithAuthToken(token)
 	}
-	baseURL := "https://api.github.com/"
 
 	return &GithubApi{
 		url:    baseURL,
 		client: client,
-	}
+	}, nil
 }
 
 func (gapi *GithubApi) GetDescription(projectUrl string) (string, error) {
@@ -162,6 +173,9 @@ func (gapi *GithubApi) HttpGet(assetUrl string, token string) ([]byte, error) {
 	req, err := http.NewRequest("GET", assetUrl, nil)
 	if err != nil {
 		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	return downloadAsset(req)
 }
