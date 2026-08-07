@@ -230,10 +230,13 @@ func (f *FormulaInfo) Update() error {
 	return WriteFile(f.File, content)
 }
 
+// GetInstance returns the forge hostname, used to pick the client and token.
+// Derived from Homepage since every API call resolves owner/repo from it (the
+// download URL may point elsewhere, e.g. a CDN mirror).
 func (f *FormulaInfo) GetInstance() (string, error) {
-	u, err := url.Parse(f.URL)
+	u, err := url.Parse(f.Homepage)
 	if err != nil {
-		return "", fmt.Errorf("error parsing formula URL: %s", err)
+		return "", fmt.Errorf("error parsing formula homepage: %s", err)
 	}
 	return u.Hostname(), nil
 }
