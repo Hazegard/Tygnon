@@ -85,46 +85,60 @@ func (gapi *GitlabApi) GetBranchVersionId(projectUrl string) (string, error) {
 		return "", fmt.Errorf("error getting project: %s (%s)", err, projectPath)
 	}
 
-	commits, _, err := gapi.client.Commits.ListCommits(project.ID, &gitlab.ListCommitsOptions{
+	commits, resp, err := gapi.client.Commits.ListCommits(project.ID, &gitlab.ListCommitsOptions{
 		ListOptions: gitlab.ListOptions{
 			Page:    1,
 			PerPage: 1,
 		},
 		RefName: &project.DefaultBranch,
 	})
-	if len(commits) == 0 {
-		return "", fmt.Errorf("no commits found on branch %s", project.DefaultBranch)
-	}
 	if err != nil {
 		return "", fmt.Errorf("error listing commits: %s", err)
 	}
+	if len(commits) == 0 {
+		return "", fmt.Errorf("no commits found on branch %s", project.DefaultBranch)
+	}
 	ID := commits[0].ShortID
 
-	count := 0
-	opts := &gitlab.ListCommitsOptions{
-		RefName: &project.DefaultBranch,
-		ListOptions: gitlab.ListOptions{
-			Page:    1,
-			PerPage: 50, // adjust as needed
-		},
-	}
-	// Loop through pages until there are no more commits.
-	for {
-		commits, resp, err := gapi.client.Commits.ListCommits(project.ID, opts)
+	// Use the total from the header, falling back to paging through every
+	// commit when GitLab doesn't report it (it omits it for commits).
+	count := resp.TotalItems
+	if count == 0 {
+		count, err = gapi.countCommits(project.ID, project.DefaultBranch)
 		if err != nil {
 			return "", err
+		}
+	}
+
+	return fmt.Sprintf("%d.%s", count, ID), nil
+}
+
+// countCommits counts commits on branch by paging through the whole history,
+// used only when GetBranchVersionId can't get the total from the header.
+func (gapi *GitlabApi) countCommits(projectID int, branch string) (int, error) {
+	count := 0
+	opts := &gitlab.ListCommitsOptions{
+		RefName: &branch,
+		ListOptions: gitlab.ListOptions{
+			Page:    1,
+			PerPage: 100,
+		},
+	}
+	for {
+		commits, resp, err := gapi.client.Commits.ListCommits(projectID, opts)
+		if err != nil {
+			return 0, err
 		}
 
 		count += len(commits)
 
-		// If there are no more pages, break out of the loop.
 		if resp.NextPage <= 0 {
 			break
 		}
 		opts.Page = resp.NextPage
 	}
 
-	return fmt.Sprintf("%d.%s", count, ID), nil
+	return count, nil
 }
 
 func (gapi *GitlabApi) GetLatestVersion(homepage string) (string, error) {

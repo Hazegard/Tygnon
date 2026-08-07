@@ -84,7 +84,7 @@ func (api *GiteaApi) GetBranchVersionId(projectUrl string) (string, error) {
 		return "", fmt.Errorf("error getting repository: %w", err)
 	}
 
-	// List commits on the default branch with a page size of 1.
+	// With a page size of 1, LastPage gives the commit count directly.
 	commits, resp, err := api.client.ListRepoCommits(owner, repoName, gitea.ListCommitOptions{
 		SHA: repository.DefaultBranch,
 		ListOptions: gitea.ListOptions{
@@ -99,33 +99,7 @@ func (api *GiteaApi) GetBranchVersionId(projectUrl string) (string, error) {
 		return "", fmt.Errorf("no commits found on branch %s", repository.DefaultBranch)
 	}
 
-	opts := gitea.ListCommitOptions{
-		SHA: repository.DefaultBranch,
-		ListOptions: gitea.ListOptions{
-			Page:     1,
-			PageSize: 1,
-		},
-	}
-	count := 0
-	// Loop through pages until there are no more commits.
-	for {
-		commits, resp, err := api.client.ListRepoCommits(owner, repoName, opts)
-		if err != nil {
-			return "", err
-		}
-
-		count += len(commits)
-
-		// If there are no more pages, break out of the loop.
-		if resp.NextPage == 0 {
-			break
-		}
-		opts.Page = resp.NextPage
-	}
-
-	if count == 0 {
-		return "", fmt.Errorf("no commits found on branch %s", repository.DefaultBranch)
-	}
+	// LastPage is 0 on a single page, meaning one commit.
 	commitCount := resp.LastPage
 	if commitCount == 0 {
 		commitCount = 1
