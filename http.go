@@ -44,6 +44,12 @@ const maxFingerprintBodySize = 1 << 20 // 1 MiB
 const maxAssetBodySize = 2 << 30 // 2 GiB
 
 func downloadAsset(req *http.Request) ([]byte, error) {
+	return downloadAssetWithLimit(req, maxAssetBodySize)
+}
+
+// downloadAssetWithLimit downloads req and errors (instead of truncating) if
+// the body is bigger than maxSize, so we never hash a partial download.
+func downloadAssetWithLimit(req *http.Request, maxSize int64) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(req.Context(), assetOverallTimeout)
 	defer cancel()
 	req = req.WithContext(ctx)
@@ -58,12 +64,12 @@ func downloadAsset(req *http.Request) ([]byte, error) {
 		return nil, fmt.Errorf("failed to download asset, status: %s", resp.Status)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxAssetBodySize+1))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to download asset: %w", err)
 	}
-	if len(body) > maxAssetBodySize {
-		return nil, fmt.Errorf("asset exceeds maximum allowed size of %d bytes", maxAssetBodySize)
+	if int64(len(body)) > maxSize {
+		return nil, fmt.Errorf("asset exceeds maximum allowed size of %d bytes", maxSize)
 	}
 	return body, nil
 }

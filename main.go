@@ -135,6 +135,12 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 		l.Error().Stack().Err(err).Msg("error creating private gitlab api client")
 		return fmt.Errorf("error creating private gitlab api client: %w", err), FormulaInfo{}
 	}
+	return handleFormulaWithClient(gitClient, config.Tokens[gitDomain], formula, config, l)
+}
+
+// handleFormulaWithClient does the version check and update against an already
+// built client, split out from HandleFormula so it can be tested with a mock.
+func handleFormulaWithClient(gitClient GitApi, token string, formula FormulaInfo, config Config, l zerolog.Logger) (error, FormulaInfo) {
 	newUrl := ""
 	c := 0
 	newVersion := ""
@@ -182,7 +188,7 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 		}
 	}
 	l.Info().Str("New", newVersion).Str("Old", formula.Version).Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("New version found")
-	newReleaseArchive, err := gitClient.HttpGet(newUrl, config.Tokens[gitDomain])
+	newReleaseArchive, err := gitClient.HttpGet(newUrl, token)
 	if err != nil {
 		l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("error downloading release")
 	}
@@ -199,10 +205,10 @@ func HandleFormula(formula FormulaInfo, config Config, l zerolog.Logger) (error,
 	for i := range formula.Bottles {
 		newUrl := formula.Bottles[i].NewUrl(formula.BottleURL, formula.GetName(), formula.Version)
 
-		newReleaseArchive, err := gitClient.HttpGet(newUrl, config.Tokens[gitDomain])
+		newReleaseArchive, err := gitClient.HttpGet(newUrl, token)
 		if err != nil {
 			newUrl = formula.Bottles[i].NewUrl(formula.BottleURL, strings.ToLower(formula.GetName()), formula.Version)
-			newReleaseArchive, err = gitClient.HttpGet(newUrl, config.Tokens[gitDomain])
+			newReleaseArchive, err = gitClient.HttpGet(newUrl, token)
 
 			if err != nil {
 				l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("error downloading package")
