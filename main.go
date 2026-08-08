@@ -190,17 +190,21 @@ func handleFormulaWithClient(gitClient GitApi, token string, formula FormulaInfo
 	l.Info().Str("New", newVersion).Str("Old", formula.Version).Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("New version found")
 	newReleaseArchive, err := gitClient.HttpGet(newUrl, token)
 	if err != nil {
-		l.Warn().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("error downloading release")
+		// Abort, else we'd hash an empty body and commit a broken checksum.
+		l.Error().Err(err).Str("Url", newUrl).Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("error downloading release, skipping formula")
+		return fmt.Errorf("error downloading release from %s: %w", newUrl, err), FormulaInfo{}
 	}
 
+	formula.Version = newVersion
+	formula.SHA256 = Sha256(newReleaseArchive)
+
+	// Keep the existing description if the fetch failed, rather than blanking it.
 	description, err := gitClient.GetDescription(formula.Homepage)
 	if err != nil {
-		l.Warn().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Err(err).Msg("error getting description")
+		l.Warn().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Err(err).Msg("error getting description, keeping existing one")
+	} else {
+		formula.Description = description
 	}
-	newSha256 := Sha256(newReleaseArchive)
-	formula.Version = newVersion
-	formula.SHA256 = newSha256
-	formula.Description = description
 
 	for i := range formula.Bottles {
 		newUrl := formula.Bottles[i].NewUrl(formula.BottleURL, formula.GetName(), formula.Version)

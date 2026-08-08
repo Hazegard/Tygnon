@@ -28,13 +28,23 @@ const (
 // assetClient downloads release/bottle archives, which can be large, so it
 // avoids http.Client.Timeout (which would bound the body read too).
 var assetClient = &http.Client{
-	Transport: &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: assetDialTimeout,
-		}).DialContext,
-		TLSHandshakeTimeout:   assetDialTimeout,
-		ResponseHeaderTimeout: assetHeaderTimeout,
-	},
+	Transport: newAssetTransport(),
+}
+
+// newAssetTransport clones DefaultTransport (keeping proxy support etc.) and
+// adds the asset download timeouts.
+func newAssetTransport() *http.Transport {
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		base = &http.Transport{Proxy: http.ProxyFromEnvironment}
+	}
+	t := base.Clone()
+	t.DialContext = (&net.Dialer{
+		Timeout: assetDialTimeout,
+	}).DialContext
+	t.TLSHandshakeTimeout = assetDialTimeout
+	t.ResponseHeaderTimeout = assetHeaderTimeout
+	return t
 }
 
 // Only read the head of a homepage when fingerprinting the git instance.

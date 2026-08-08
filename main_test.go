@@ -170,6 +170,67 @@ func TestHandleFormulaPropagatesLatestVersionError(t *testing.T) {
 	}
 }
 
+func TestHandleFormulaAbortsOnReleaseDownloadFailure(t *testing.T) {
+	dir := t.TempDir()
+	formula := newTestFormula(t, dir, "1.0.0")
+
+	original, err := ReadFile(formula.File)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+
+	// A newer version is available, but the release archive won't download.
+	mock := &mockGitApi{latestVersion: "v2.0.0", httpGetErr: errors.New("network down")}
+
+	err, updated := handleFormulaWithClient(mock, "", formula, Config{}, zerolog.Nop())
+	if err == nil {
+		t.Fatalf("expected an error when the release download fails")
+	}
+	if updated.URL != "" {
+		t.Fatalf("expected a zero-value FormulaInfo on download failure, got %+v", updated)
+	}
+
+	// The file must be untouched: no version bump, no empty-file sha256.
+	onDisk, err := ReadFile(formula.File)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if onDisk != original {
+		t.Fatalf("formula file was modified despite a failed download:\n%s", onDisk)
+	}
+	emptyFileSha := Sha256(nil)
+	if strings.Contains(onDisk, emptyFileSha) {
+		t.Fatalf("empty-file sha256 %q was written into the formula:\n%s", emptyFileSha, onDisk)
+	}
+}
+
+func TestHandleFormulaKeepsExistingDescriptionOnFetchError(t *testing.T) {
+	dir := t.TempDir()
+	formula := newTestFormula(t, dir, "1.0.0") // desc: "old description"
+
+	// Download succeeds, but fetching the description fails.
+	mock := &mockGitApi{latestVersion: "v2.0.0", descriptionErr: errors.New("api hiccup")}
+
+	err, updated := handleFormulaWithClient(mock, "", formula, Config{}, zerolog.Nop())
+	if err != nil {
+		t.Fatalf("handleFormulaWithClient: %v", err)
+	}
+	if updated.Version != "2.0.0" {
+		t.Fatalf("expected the version to still be bumped, got %q", updated.Version)
+	}
+	if updated.Description != "old description" {
+		t.Fatalf("expected the existing description to be preserved, got %q", updated.Description)
+	}
+
+	onDisk, err := ReadFile(formula.File)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if !strings.Contains(onDisk, `desc "old description"`) {
+		t.Fatalf("description was blanked/altered on a fetch error:\n%s", onDisk)
+	}
+}
+
 func TestHandleFormulaClearsRevisionUnlessKeepRevisionSet(t *testing.T) {
 	dir := t.TempDir()
 	content := `class Foo < Formula
@@ -248,13 +309,14 @@ end
 		t.Fatalf("expected 1 bottle, got %d", len(formula.Bottles))
 	}
 
-	// GetName() derives from the file name ("Foo"); the mixed-case bottle
-	// URL must fail so the fallback to the lowercased name is exercised.
-	lowercaseURL := formula.Bottles[0].NewUrl(formula.BottleURL, "foo", "2.0.0")
+	// The mixed-case bottle URL fails so the lowercase fallback runs; the
+	// release download must succeed, else the update aborts first.
+	mixedCaseBottleURL := formula.Bottles[0].NewUrl(formula.BottleURL, formula.GetName(), "2.0.0")
+	lowercaseBottleURL := formula.Bottles[0].NewUrl(formula.BottleURL, "foo", "2.0.0")
 	client := &conditionalHttpGetMock{
-		mockGitApi:  &mockGitApi{latestVersion: "v2.0.0"},
-		successURL:  lowercaseURL,
-		successBody: []byte("bottle-bytes"),
+		mockGitApi: &mockGitApi{latestVersion: "v2.0.0"},
+		failURLs:   map[string]bool{mixedCaseBottleURL: true},
+		bodies:     map[string][]byte{lowercaseBottleURL: []byte("bottle-bytes")},
 	}
 
 	err, updated := handleFormulaWithClient(client, "", formula, Config{}, zerolog.Nop())
@@ -267,20 +329,22 @@ end
 	}
 }
 
-// conditionalHttpGetMock only succeeds for one specific asset URL and errors
-// for every other HttpGet call, embedding mockGitApi for the rest of the
-// GitApi interface.
+// conditionalHttpGetMock errors for URLs in failURLs, serves per-URL bodies
+// when set, and a default otherwise.
 type conditionalHttpGetMock struct {
 	*mockGitApi
-	successURL  string
-	successBody []byte
+	failURLs map[string]bool
+	bodies   map[string][]byte
 }
 
 func (c *conditionalHttpGetMock) HttpGet(assetUrl string, token string) ([]byte, error) {
-	if assetUrl == c.successURL {
-		return c.successBody, nil
+	if c.failURLs[assetUrl] {
+		return nil, errors.New("simulated 404")
 	}
-	return nil, errors.New("simulated 404")
+	if b, ok := c.bodies[assetUrl]; ok {
+		return b, nil
+	}
+	return []byte("default-asset-content"), nil
 }
 
 func TestHandleFormulaUnknownInstanceErrors(t *testing.T) {

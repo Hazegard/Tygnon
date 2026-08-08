@@ -3,9 +3,61 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
+
+// The asset transport must keep DefaultTransport's proxy support while adding
+// the download timeouts.
+func TestAssetTransportPreservesProxy(t *testing.T) {
+	tr := newAssetTransport()
+
+	if tr.Proxy == nil {
+		t.Fatal("asset transport has a nil Proxy func: HTTP(S)_PROXY/NO_PROXY would be ignored")
+	}
+
+	// Check the Proxy func routes through a proxy (set one explicitly, since
+	// ProxyFromEnvironment caches the env on first use).
+	proxyURL, _ := url.Parse("http://proxy.internal:3128")
+	tr.Proxy = http.ProxyURL(proxyURL)
+	req, _ := http.NewRequest("GET", "https://example.com/asset.tar.gz", nil)
+	got, err := tr.Proxy(req)
+	if err != nil {
+		t.Fatalf("Proxy func returned an error: %v", err)
+	}
+	if got == nil || got.Host != "proxy.internal:3128" {
+		t.Fatalf("request was not routed through the configured proxy, got %v", got)
+	}
+
+	// The download-specific timeouts must be applied on top of the clone.
+	if tr.ResponseHeaderTimeout != assetHeaderTimeout {
+		t.Errorf("ResponseHeaderTimeout = %v, want %v", tr.ResponseHeaderTimeout, assetHeaderTimeout)
+	}
+	if tr.TLSHandshakeTimeout != assetDialTimeout {
+		t.Errorf("TLSHandshakeTimeout = %v, want %v", tr.TLSHandshakeTimeout, assetDialTimeout)
+	}
+	if tr.DialContext == nil {
+		t.Error("DialContext should be set")
+	}
+}
+
+// Mutating the asset transport must not touch http.DefaultTransport.
+func TestAssetTransportIsIndependentClone(t *testing.T) {
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		t.Skip("http.DefaultTransport is not *http.Transport on this build")
+	}
+	before := base.ResponseHeaderTimeout
+
+	tr := newAssetTransport()
+	tr.ResponseHeaderTimeout = 999 * time.Second
+
+	if base.ResponseHeaderTimeout != before {
+		t.Fatalf("mutating the asset transport leaked into http.DefaultTransport (%v != %v)", base.ResponseHeaderTimeout, before)
+	}
+}
 
 func TestDownloadAssetSuccess(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
