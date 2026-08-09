@@ -192,12 +192,14 @@ func escapeReplacement(s string) string {
 }
 
 // Update updates the given Homebrew formula string with new version and sha256 values.
-// It returns the updated formula as a string.
-func (f *FormulaInfo) Update() error {
+// It reports whether the file content actually changed, so callers can skip
+// unchanged formulas (e.g. under -force, where the same version is re-written).
+func (f *FormulaInfo) Update() (bool, error) {
 	content, err := ReadFile(f.File)
 	if err != nil {
-		return fmt.Errorf("error reading formula file: %s", err)
+		return false, fmt.Errorf("error reading formula file: %s", err)
 	}
+	original := content
 
 	reVersion := regexp.MustCompile(`(?m)^(\s*version\s+")([^"]+)(".*)$`)
 	// Replace the current version with the new version.
@@ -227,7 +229,13 @@ func (f *FormulaInfo) Update() error {
 		content = reRevisionLine.ReplaceAllString(content, "")
 	}
 
-	return WriteFile(f.File, content)
+	if content == original {
+		return false, nil
+	}
+	if err := WriteFile(f.File, content); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // GetInstance returns the forge hostname, used to pick the client and token.

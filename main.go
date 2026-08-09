@@ -227,9 +227,14 @@ func handleFormulaWithClient(gitClient GitApi, token string, formula FormulaInfo
 		formula.Revision = ""
 	}
 
-	err = formula.Update()
+	changed, err := formula.Update()
 	if err != nil {
 		l.Warn().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Str("File", formula.File).Err(err).Msg("error updating formula")
+		return fmt.Errorf("error updating formula %s: %w", formula.GetLocalFile(), err), FormulaInfo{}
+	}
+	if !changed {
+		l.Info().Str("Formula", formula.GetLocalFile()).Str("Url", formula.Homepage).Msg("Formula already up to date, nothing to commit")
+		return nil, FormulaInfo{}
 	}
 
 	return nil, formula
@@ -258,6 +263,18 @@ func HandleGit(config Config, path string, l zerolog.Logger) error {
 	if err != nil {
 		l.Error().Stack().Err(err).Msg("error adding files to staged commit")
 		return err
+	}
+
+	// Only commit if something is actually staged: with -force we may re-write
+	// identical content, and `git add -p` lets the user decline every hunk.
+	staged, err := git.GetCommitFiles()
+	if err != nil {
+		l.Error().Stack().Err(err).Msg("error checking staged files")
+		return err
+	}
+	if len(staged) == 0 {
+		l.Info().Str("Path", gitDir).Msg("No staged changes, nothing to commit")
+		return nil
 	}
 
 	l.Info().Str("Path", gitDir).Msg("Commiting files")

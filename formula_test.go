@@ -203,7 +203,7 @@ func TestUpdateEscapesInjection(t *testing.T) {
 	info.Version = `2.0.0"; require 'open3'; Open3.capture2("id"); x="`
 	info.SHA256 = strings.Repeat("a", 64)
 
-	if err := info.Update(); err != nil {
+	if _, err := info.Update(); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 
@@ -243,7 +243,7 @@ func TestUpdateEscapesInterpolationOnlyNotBareHash(t *testing.T) {
 
 	info.Description = `A C# wrapper, fixes #123`
 	info.Version = `1.0.1`
-	if err := info.Update(); err != nil {
+	if _, err := info.Update(); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 
@@ -256,7 +256,7 @@ func TestUpdateEscapesInterpolationOnlyNotBareHash(t *testing.T) {
 	}
 
 	info.Description = `evil #{system("id")} interpolation`
-	if err := info.Update(); err != nil {
+	if _, err := info.Update(); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 	updated, err = ReadFile(path)
@@ -280,7 +280,7 @@ func TestUpdatePreservesDollarSigns(t *testing.T) {
 	// regexp replacement, so an unescaped one would silently drop text.
 	info.Description = `Costs $5, honours ${HOME} and $1`
 	info.Version = `1.2.3+build$99`
-	if err := info.Update(); err != nil {
+	if _, err := info.Update(); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 
@@ -296,6 +296,34 @@ func TestUpdatePreservesDollarSigns(t *testing.T) {
 	}
 }
 
+func TestUpdateReportsWhetherChanged(t *testing.T) {
+	dir := t.TempDir()
+	path := writeFormula(t, dir, "foo.rb", sampleFormula)
+	info, err := ParseFormula(path, dir)
+	if err != nil {
+		t.Fatalf("ParseFormula: %v", err)
+	}
+
+	// Re-writing the same parsed values (the -force case) changes nothing.
+	changed, err := info.Update()
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if changed {
+		t.Fatalf("expected no change when re-writing identical content")
+	}
+
+	// A real version bump must report a change.
+	info.Version = "9.9.9"
+	changed, err = info.Update()
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if !changed {
+		t.Fatalf("expected a change after bumping the version")
+	}
+}
+
 func TestUpdateRevisionLifecycle(t *testing.T) {
 	t.Run("set replaces existing revision", func(t *testing.T) {
 		dir := t.TempDir()
@@ -305,7 +333,7 @@ func TestUpdateRevisionLifecycle(t *testing.T) {
 			t.Fatalf("ParseFormula: %v", err)
 		}
 		info.Revision = "7"
-		if err := info.Update(); err != nil {
+		if _, err := info.Update(); err != nil {
 			t.Fatalf("Update: %v", err)
 		}
 		updated, _ := ReadFile(path)
@@ -322,7 +350,7 @@ func TestUpdateRevisionLifecycle(t *testing.T) {
 			t.Fatalf("ParseFormula: %v", err)
 		}
 		info.Revision = ""
-		if err := info.Update(); err != nil {
+		if _, err := info.Update(); err != nil {
 			t.Fatalf("Update: %v", err)
 		}
 		updated, _ := ReadFile(path)
@@ -346,7 +374,7 @@ func TestUpdateRevisionLifecycle(t *testing.T) {
 		if info.Revision != "" {
 			t.Fatalf("expected no revision parsed")
 		}
-		if err := info.Update(); err != nil {
+		if _, err := info.Update(); err != nil {
 			t.Fatalf("Update: %v", err)
 		}
 		updated, _ := ReadFile(path)
